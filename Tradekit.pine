@@ -44,9 +44,7 @@ ma(source, length, _type) =>
 groupMA1 = "MA 1"
 
 len1   = input.int(9, "Length", minval=1, group=groupMA1)
-type1  = input.string("EMA", "Type",
-     options=["SMA", "EMA", "SMMA (RMA)", "WMA", "VWMA"],
-     group=groupMA1)
+type1  = input.string("EMA", "Type", options=["SMA", "EMA", "SMMA (RMA)", "WMA", "VWMA"], group=groupMA1)
 color1 = input.color(color.blue, "Color", group=groupMA1)
 
 //==================================================
@@ -55,9 +53,7 @@ color1 = input.color(color.blue, "Color", group=groupMA1)
 groupMA2 = "MA 2"
 
 len2   = input.int(13, "Length", minval=1, group=groupMA2)
-type2  = input.string("EMA", "Type",
-     options=["SMA", "EMA", "SMMA (RMA)", "WMA", "VWMA"],
-     group=groupMA2)
+type2  = input.string("EMA", "Type", options=["SMA", "EMA", "SMMA (RMA)", "WMA", "VWMA"], group=groupMA2)
 color2 = input.color(color.aqua, "Color", group=groupMA2)
 
 //==================================================
@@ -66,9 +62,7 @@ color2 = input.color(color.aqua, "Color", group=groupMA2)
 groupMA3 = "MA 3"
 
 len3   = input.int(50, "Length", minval=1, group=groupMA3)
-type3  = input.string("EMA", "Type",
-     options=["SMA", "EMA", "SMMA (RMA)", "WMA", "VWMA"],
-     group=groupMA3)
+type3  = input.string("EMA", "Type", options=["SMA", "EMA", "SMMA (RMA)", "WMA", "VWMA"], group=groupMA3)
 color3 = input.color(color.green, "Color", group=groupMA3)
 
 //==================================================
@@ -77,9 +71,7 @@ color3 = input.color(color.green, "Color", group=groupMA3)
 groupMA4 = "MA 4"
 
 len4   = input.int(200, "Length", minval=1, group=groupMA4)
-type4  = input.string("EMA", "Type",
-     options=["SMA", "EMA", "SMMA (RMA)", "WMA", "VWMA"],
-     group=groupMA4)
+type4  = input.string("EMA", "Type", options=["SMA", "EMA", "SMMA (RMA)", "WMA", "VWMA"], group=groupMA4)
 color4 = input.color(color.red, "Color", group=groupMA4)
 
 //==================================================
@@ -101,17 +93,11 @@ plot(enableMA4 ? ma4 : na, title="MA 4", color=color4, linewidth=1)
 //==================================================
 // MA CROSSOVER ALERTS
 //==================================================
-alertcondition(enableMA1 and enableMA2 and (ta.crossover(ma1, ma2) or ta.crossunder(ma1, ma2)),
-     title="MA 1 / MA 2 Cross",
-     message="MA 1 crossed MA 2")
+alertcondition(enableMA1 and enableMA2 and (ta.crossover(ma1, ma2) or ta.crossunder(ma1, ma2)), title="MA 1 / MA 2 Cross", message="MA 1 crossed MA 2")
 
-alertcondition(enableMA2 and enableMA3 and (ta.crossover(ma2, ma3) or ta.crossunder(ma2, ma3)),
-     title="MA 2 / MA 3 Cross",
-     message="MA 2 crossed MA 3")
+alertcondition(enableMA2 and enableMA3 and (ta.crossover(ma2, ma3) or ta.crossunder(ma2, ma3)), title="MA 2 / MA 3 Cross", message="MA 2 crossed MA 3")
 
-alertcondition(enableMA3 and enableMA4 and (ta.crossover(ma3, ma4) or ta.crossunder(ma3, ma4)),
-     title="MA 3 / MA 4 Cross",
-     message="MA 3 crossed MA 4")
+alertcondition(enableMA3 and enableMA4 and (ta.crossover(ma3, ma4) or ta.crossunder(ma3, ma4)), title="MA 3 / MA 4 Cross", message="MA 3 crossed MA 4")
 
 //==================================================
 // INSIDE BAR SETTINGS
@@ -130,22 +116,12 @@ insideBar = enableInsideBar and barstate.isconfirmed and high < high[1] and low 
 barcolor(insideBar ? insideColor : na)
 
 // Label
-plotshape(
-     showIBLabel and insideBar,
-     title="Inside Bar",
-     style=shape.triangleup,
-     location=location.belowbar,
-     color=insideColor,
-     size=size.tiny,
-     text="IB"
-)
+plotshape(showIBLabel and insideBar, title="Inside Bar", style=shape.triangleup, location=location.belowbar, color=insideColor, size=size.tiny, text="IB")
 
 //==================================================
 // ALERT
 //==================================================
-alertcondition(enableInsideBar and insideBar,
-     title="Inside Bar",
-     message="Inside Bar detected")
+alertcondition(enableInsideBar and insideBar, title="Inside Bar", message="Inside Bar detected")
 
 //==================================================
 // OUTSIDE BAR SETTINGS
@@ -164,22 +140,12 @@ outsideBar = enableOutsideBar and barstate.isconfirmed and high > high[1] and lo
 barcolor(outsideBar ? outsideColor : na)
 
 // Label
-plotshape(
-     showOBLabel and outsideBar,
-     title="Outside Bar",
-     style=shape.triangledown,
-     location=location.abovebar,
-     color=outsideColor,
-     size=size.tiny,
-     text="OB"
-)
+plotshape(showOBLabel and outsideBar, title="Outside Bar", style=shape.triangledown, location=location.abovebar, color=outsideColor, size=size.tiny, text="OB")
 
 //==================================================
 // ALERT
 //==================================================
-alertcondition(enableOutsideBar and outsideBar,
-     title="Outside Bar",
-     message="Outside Bar detected")
+alertcondition(enableOutsideBar and outsideBar, title="Outside Bar", message="Outside Bar detected")
 
 //==================================================
 // BOLLINGER BANDS
@@ -193,24 +159,13 @@ TT_SOURCE  = "Determines what data from each bar will be used in calculations."
 TT_MULT    = "The number of Standard Deviations away from the MA that the Upper and Lower Bands should be."
 
 bbLength = input.int(20, "Length", minval=1, tooltip=TT_LENGTH, group=groupBB)
-bbMAType = input.string("EMA", "Basis MA Type",
-     options=["SMA", "EMA", "SMMA (RMA)", "WMA", "VWMA"],
-     tooltip=TT_MA_TYPE,
-     group=groupBB)
+bbMAType = input.string("EMA", "Basis MA Type", options=["SMA", "EMA", "SMMA (RMA)", "WMA", "VWMA"], tooltip=TT_MA_TYPE, group=groupBB)
 
 bbSrc = input.source(close, "Source", tooltip=TT_SOURCE, group=groupBB)
 
-bbMult = input.float(2.0, "StdDev",
-     minval=0.001,
-     maxval=50,
-     tooltip=TT_MULT,
-     group=groupBB)
+bbMult = input.float(2.0, "StdDev", minval=0.001, maxval=50, tooltip=TT_MULT, group=groupBB)
 
-bbOffset = input.int(0, "Offset",
-     minval=-500,
-     maxval=500,
-     display=display.none,
-     group=groupBB)
+bbOffset = input.int(0, "Offset", minval=-500, maxval=500, display=display.none, group=groupBB)
 
 // BB Calculation
 basis = ma(bbSrc, bbLength, bbMAType)
@@ -223,20 +178,14 @@ pBasis = plot(enableBB ? basis : na, "BB Basis", color=#2962FF, offset=bbOffset)
 pUpper = plot(enableBB ? upper : na, "BB Upper", color=#F23645, offset=bbOffset)
 pLower = plot(enableBB ? lower : na, "BB Lower", color=#089981, offset=bbOffset)
 
-fill(pUpper, pLower,
-     title="BB Fill",
-     color=enableBB ? color.rgb(33,150,243,95) : na)
+fill(pUpper, pLower, title="BB Fill", color=enableBB ? color.rgb(33,150,243,95) : na)
 
 //==================================================
 // BB ALERTS
 //==================================================
-alertcondition(enableBB and ta.crossover(close, upper),
-     title="BB Upper Cross",
-     message="Price crossed above the Bollinger Band")
+alertcondition(enableBB and ta.crossover(close, upper), title="BB Upper Cross", message="Price crossed above the Bollinger Band")
 
-alertcondition(enableBB and ta.crossunder(close, lower),
-     title="BB Lower Cross",
-     message="Price crossed below the Bollinger Band")
+alertcondition(enableBB and ta.crossunder(close, lower), title="BB Lower Cross", message="Price crossed below the Bollinger Band")
 
 //==================================================
 // SETTINGS
@@ -248,19 +197,12 @@ lowColor  = input.color(color.red, "Low Color", group=groupDHL)
 
 lineWidth = input.int(2, "Line Width", minval=1, maxval=5, group=groupDHL)
 
-lineStyleInput = input.string(
-     "Dotted",
-     "Line Style",
-     options = ["Solid", "Dashed", "Dotted"],
-     group = groupDHL)
+lineStyleInput = input.string("Dotted", "Line Style", options = ["Solid", "Dashed", "Dotted"], group = groupDHL)
 
 //==================================================
 // LINE STYLE
 //==================================================
-lineStyle =
-     lineStyleInput == "Solid"  ? line.style_solid :
-     lineStyleInput == "Dashed" ? line.style_dashed :
-                                  line.style_dotted
+lineStyle = lineStyleInput == "Solid" ? line.style_solid : lineStyleInput == "Dashed" ? line.style_dashed : line.style_dotted
 
 //==================================================
 // VARIABLES
@@ -296,23 +238,9 @@ if enableDHL
         dayLow := low
         dayStart := bar_index
 
-        highLine := line.new(
-             dayStart,
-             dayHigh,
-             dayStart,
-             dayHigh,
-             color = highColor,
-             width = lineWidth,
-             style = lineStyle)
+        highLine := line.new(dayStart, dayHigh, dayStart, dayHigh, color = highColor, width = lineWidth, style = lineStyle)
 
-        lowLine := line.new(
-             dayStart,
-             dayLow,
-             dayStart,
-             dayLow,
-             color = lowColor,
-             width = lineWidth,
-             style = lineStyle)
+        lowLine := line.new(dayStart, dayLow, dayStart, dayLow, color = lowColor, width = lineWidth, style = lineStyle)
 
         array.push(highLines, highLine)
         array.push(lowLines, lowLine)
@@ -346,16 +274,9 @@ groupPDHL = "Previous Day High/Low"
 pdHighColor      = input.color(color.orange, "High Color", group=groupPDHL)
 pdLowColor       = input.color(color.orange, "Low Color", group=groupPDHL)
 pdLineWidth      = input.int(1, "Line Width", minval=1, maxval=5, group=groupPDHL)
-pdLineStyleInput = input.string(
-     "Dashed",
-     "Line Style",
-     options = ["Solid", "Dashed", "Dotted"],
-     group = groupPDHL)
+pdLineStyleInput = input.string("Dashed", "Line Style", options = ["Solid", "Dashed", "Dotted"], group = groupPDHL)
 
-pdLineStyle =
-     pdLineStyleInput == "Solid"  ? line.style_solid :
-     pdLineStyleInput == "Dashed" ? line.style_dashed :
-                                     line.style_dotted
+pdLineStyle = pdLineStyleInput == "Solid" ? line.style_solid : pdLineStyleInput == "Dashed" ? line.style_dashed : line.style_dotted
 
 //==================================================
 // PREVIOUS DAY HIGH / LOW LOGIC
@@ -396,13 +317,9 @@ if enablePDHL
 //==================================================
 // PREVIOUS DAY HIGH / LOW ALERTS
 //==================================================
-alertcondition(enablePDHL and not na(pdHigh) and ta.crossover(close, pdHigh),
-     title="Previous Day High Break",
-     message="Price broke above the previous day's high")
+alertcondition(enablePDHL and not na(pdHigh) and ta.crossover(close, pdHigh), title="Previous Day High Break", message="Price broke above the previous day's high")
 
-alertcondition(enablePDHL and not na(pdLow) and ta.crossunder(close, pdLow),
-     title="Previous Day Low Break",
-     message="Price broke below the previous day's low")
+alertcondition(enablePDHL and not na(pdLow) and ta.crossunder(close, pdLow), title="Previous Day Low Break", message="Price broke below the previous day's low")
 
 //==================================================
 // PREVIOUS WEEK HIGH / LOW SETTINGS
@@ -412,16 +329,9 @@ groupPWHL = "Previous Week High/Low"
 pwHighColor      = input.color(color.purple, "High Color", group=groupPWHL)
 pwLowColor       = input.color(color.purple, "Low Color", group=groupPWHL)
 pwLineWidth      = input.int(1, "Line Width", minval=1, maxval=5, group=groupPWHL)
-pwLineStyleInput = input.string(
-     "Dashed",
-     "Line Style",
-     options = ["Solid", "Dashed", "Dotted"],
-     group = groupPWHL)
+pwLineStyleInput = input.string("Dashed", "Line Style", options = ["Solid", "Dashed", "Dotted"], group = groupPWHL)
 
-pwLineStyle =
-     pwLineStyleInput == "Solid"  ? line.style_solid :
-     pwLineStyleInput == "Dashed" ? line.style_dashed :
-                                     line.style_dotted
+pwLineStyle = pwLineStyleInput == "Solid" ? line.style_solid : pwLineStyleInput == "Dashed" ? line.style_dashed : line.style_dotted
 
 //==================================================
 // PREVIOUS WEEK HIGH / LOW LOGIC
@@ -469,16 +379,9 @@ groupPMHL = "Previous Month High/Low"
 pmHighColor      = input.color(color.teal, "High Color", group=groupPMHL)
 pmLowColor       = input.color(color.teal, "Low Color", group=groupPMHL)
 pmLineWidth      = input.int(1, "Line Width", minval=1, maxval=5, group=groupPMHL)
-pmLineStyleInput = input.string(
-     "Dashed",
-     "Line Style",
-     options = ["Solid", "Dashed", "Dotted"],
-     group = groupPMHL)
+pmLineStyleInput = input.string("Dashed", "Line Style", options = ["Solid", "Dashed", "Dotted"], group = groupPMHL)
 
-pmLineStyle =
-     pmLineStyleInput == "Solid"  ? line.style_solid :
-     pmLineStyleInput == "Dashed" ? line.style_dashed :
-                                     line.style_dotted
+pmLineStyle = pmLineStyleInput == "Solid" ? line.style_solid : pmLineStyleInput == "Dashed" ? line.style_dashed : line.style_dotted
 
 //==================================================
 // PREVIOUS MONTH HIGH / LOW LOGIC
@@ -525,10 +428,7 @@ groupVWAP = "VWAP"
 
 vwapColor     = input.color(color.yellow, "VWAP Color", group=groupVWAP)
 vwapShowBands = input.bool(false, "Show Bands", group=groupVWAP)
-vwapBandsMult = input.float(2.0, "Bands StdDev",
-     minval=0.001,
-     maxval=50,
-     group=groupVWAP)
+vwapBandsMult = input.float(2.0, "Bands StdDev", minval=0.001, maxval=50, group=groupVWAP)
 
 // VWAP Calculation
 [vwapValue, vwapUpper, vwapLower] = ta.vwap(hlc3, newDay, vwapBandsMult)
@@ -539,27 +439,19 @@ plot(enableVWAP ? vwapValue : na, title="VWAP", color=vwapColor, linewidth=2)
 pVWAPUpper = plot(enableVWAP and vwapShowBands ? vwapUpper : na, title="VWAP Upper Band", color=vwapColor)
 pVWAPLower = plot(enableVWAP and vwapShowBands ? vwapLower : na, title="VWAP Lower Band", color=vwapColor)
 
-fill(pVWAPUpper, pVWAPLower,
-     title="VWAP Band Fill",
-     color=enableVWAP and vwapShowBands ? color.new(vwapColor, 90) : na)
+fill(pVWAPUpper, pVWAPLower, title="VWAP Band Fill", color=enableVWAP and vwapShowBands ? color.new(vwapColor, 90) : na)
 
 //==================================================
 // DASHBOARD SETTINGS
 //==================================================
 groupDashboard = "Dashboard"
 
-tablePositionInput = input.string("Top Right", "Position",
-     options=["Top Left", "Top Right", "Bottom Left", "Bottom Right"],
-     group=groupDashboard)
+tablePositionInput = input.string("Top Right", "Position", options=["Top Left", "Top Right", "Bottom Left", "Bottom Right"], group=groupDashboard)
 
 dashTextColor = input.color(color.white, "Text Color", group=groupDashboard)
 dashBgColor   = input.color(color.new(color.black, 20), "Background Color", group=groupDashboard)
 
-tablePosition =
-     tablePositionInput == "Top Left"    ? position.top_left :
-     tablePositionInput == "Top Right"   ? position.top_right :
-     tablePositionInput == "Bottom Left" ? position.bottom_left :
-                                            position.bottom_right
+tablePosition = tablePositionInput == "Top Left" ? position.top_left : tablePositionInput == "Top Right" ? position.top_right : tablePositionInput == "Bottom Left" ? position.bottom_left : position.bottom_right
 
 //==================================================
 // DASHBOARD
