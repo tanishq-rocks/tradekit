@@ -16,6 +16,7 @@ Upgrade from a personal script to a general-purpose, publishable toolkit.
 - Removed a stray duplicate `//@version=6` and commented-out `indicator()` call left over from merging two scripts into one.
 - Removed a dead line-cleanup block that could never execute.
 - Relabeled the shared EMA source input and the Daily High/Low toggle so their names match what they actually do.
+- Fixed slow script load: the Previous Day/Week/Month High-Low and VWAP calculations now skip their `request.security()`/`ta.vwap()` calls entirely when disabled, instead of always running regardless of the toggle. Also dropped redundant per-bar line-style resets that were re-applying values that never change during a run.
 
 **Changed**
 - Renamed EMA 1–4 to MA 1–4 throughout, since each is now a configurable MA type rather than a fixed EMA.
