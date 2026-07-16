@@ -1,0 +1,278 @@
+//@version=6
+indicator("TradeKit", shorttitle="TradeKit", overlay=true)
+
+//==================================================
+// FEATURES
+//==================================================
+groupFeatures = "Features"
+
+enableEMA1      = input.bool(true,  "Enable EMA 1", group=groupFeatures)
+enableEMA2      = input.bool(true,  "Enable EMA 2", group=groupFeatures)
+enableEMA3      = input.bool(true,  "Enable EMA 3", group=groupFeatures)
+enableEMA4      = input.bool(true,  "Enable EMA 4", group=groupFeatures)
+enableInsideBar = input.bool(true,  "Enable Inside Bar", group=groupFeatures)
+enableBB = input.bool(true, "Enable Bollinger Bands", group=groupFeatures)
+enableDHL = input.bool(true, "Enable Previous Day High/Low", group=groupFeatures)
+
+//==================================================
+// SOURCE
+//==================================================
+src = input.source(close, "Source")
+
+//==================================================
+// EMA 1
+//==================================================
+groupEMA1 = "EMA 1"
+
+len1   = input.int(9, "Length", minval=1, group=groupEMA1)
+color1 = input.color(color.blue, "Color", group=groupEMA1)
+
+//==================================================
+// EMA 2
+//==================================================
+groupEMA2 = "EMA 2"
+
+len2   = input.int(13, "Length", minval=1, group=groupEMA2)
+color2 = input.color(color.aqua, "Color", group=groupEMA2)
+
+//==================================================
+// EMA 3
+//==================================================
+groupEMA3 = "EMA 3"
+
+len3   = input.int(50, "Length", minval=1, group=groupEMA3)
+color3 = input.color(color.green, "Color", group=groupEMA3)
+
+//==================================================
+// EMA 4
+//==================================================
+groupEMA4 = "EMA 4"
+
+len4   = input.int(200, "Length", minval=1, group=groupEMA4)
+color4 = input.color(color.red, "Color", group=groupEMA4)
+
+//==================================================
+// EMA CALCULATIONS
+//==================================================
+ema1 = ta.ema(src, len1)
+ema2 = ta.ema(src, len2)
+ema3 = ta.ema(src, len3)
+ema4 = ta.ema(src, len4)
+
+//==================================================
+// EMA PLOTS
+//==================================================
+plot(enableEMA1 ? ema1 : na, title="EMA 1", color=color1, linewidth=1)
+plot(enableEMA2 ? ema2 : na, title="EMA 2", color=color2, linewidth=1)
+plot(enableEMA3 ? ema3 : na, title="EMA 3", color=color3, linewidth=1)
+plot(enableEMA4 ? ema4 : na, title="EMA 4", color=color4, linewidth=1)
+
+//==================================================
+// INSIDE BAR SETTINGS
+//==================================================
+groupIB = "Inside Bar"
+
+insideColor = input.color(color.white, "Inside Bar Color", group=groupIB)
+showIBLabel = input.bool(false, "Show IB Label", group=groupIB)
+
+//==================================================
+// INSIDE BAR LOGIC
+//==================================================
+insideBar = enableInsideBar and barstate.isconfirmed and high < high[1] and low > low[1]
+
+// Color candle
+barcolor(insideBar ? insideColor : na)
+
+// Label
+plotshape(
+     showIBLabel and insideBar,
+     title="Inside Bar",
+     style=shape.triangleup,
+     location=location.belowbar,
+     color=insideColor,
+     size=size.tiny,
+     text="IB"
+)
+
+//==================================================
+// ALERT
+//==================================================
+alertcondition(enableInsideBar and insideBar,
+     title="Inside Bar",
+     message="Inside Bar detected")
+
+//==================================================
+// BOLLINGER BANDS
+//==================================================
+groupBB = "Bollinger Bands"
+
+TT_LENGTH  = "The time period to be used in calculating the MA which creates the base for the Upper and Lower Bands."
+TT_MA_TYPE = "Determines the type of Moving Average that is applied to the basis plot line."
+TT_SOURCE  = "Determines what data from each bar will be used in calculations."
+TT_MULT    = "The number of Standard Deviations away from the MA that the Upper and Lower Bands should be."
+
+bbLength = input.int(20, "Length", minval=1, tooltip=TT_LENGTH, group=groupBB)
+bbMAType = input.string("EMA", "Basis MA Type",
+     options=["SMA", "EMA", "SMMA (RMA)", "WMA", "VWMA"],
+     tooltip=TT_MA_TYPE,
+     group=groupBB)
+
+bbSrc = input.source(close, "Source", tooltip=TT_SOURCE, group=groupBB)
+
+bbMult = input.float(2.0, "StdDev",
+     minval=0.001,
+     maxval=50,
+     tooltip=TT_MULT,
+     group=groupBB)
+
+bbOffset = input.int(0, "Offset",
+     minval=-500,
+     maxval=500,
+     display=display.none,
+     group=groupBB)
+
+// MA Function
+ma(source, length, _type) =>
+    switch _type
+        "SMA"         => ta.sma(source, length)
+        "EMA"         => ta.ema(source, length)
+        "SMMA (RMA)"  => ta.rma(source, length)
+        "WMA"         => ta.wma(source, length)
+        "VWMA"        => ta.vwma(source, length)
+
+// BB Calculation
+basis = ma(bbSrc, bbLength, bbMAType)
+dev = bbMult * ta.stdev(bbSrc, bbLength)
+upper = basis + dev
+lower = basis - dev
+
+// BB Plots
+pBasis = plot(enableBB ? basis : na, "BB Basis", color=#2962FF, offset=bbOffset)
+pUpper = plot(enableBB ? upper : na, "BB Upper", color=#F23645, offset=bbOffset)
+pLower = plot(enableBB ? lower : na, "BB Lower", color=#089981, offset=bbOffset)
+
+fill(pUpper, pLower,
+     title="BB Fill",
+     color=enableBB ? color.rgb(33,150,243,95) : na)
+
+
+//@version=6
+// indicator("Daily High / Low", overlay = true)
+
+//==================================================
+// SETTINGS
+//==================================================
+groupDHL = "Daily High / Low"
+
+highColor = input.color(color.lime, "High Color", group=groupDHL)
+lowColor  = input.color(color.red, "Low Color", group=groupDHL)
+
+lineWidth = input.int(2, "Line Width", minval=1, maxval=5, group=groupDHL)
+
+lineStyleInput = input.string(
+     "Dotted",
+     "Line Style",
+     options = ["Solid", "Dashed", "Dotted"],
+     group = groupDHL)
+
+//==================================================
+// LINE STYLE
+//==================================================
+lineStyle =
+     lineStyleInput == "Solid"  ? line.style_solid :
+     lineStyleInput == "Dashed" ? line.style_dashed :
+                                  line.style_dotted
+
+//==================================================
+// VARIABLES
+//==================================================
+newDay = timeframe.change("D")
+
+var float dayHigh = na
+var float dayLow = na
+var int dayStart = na
+
+var line highLine = na
+var line lowLine = na
+
+var line[] highLines = array.new_line()
+var line[] lowLines = array.new_line()
+
+//==================================================
+// DELETE ALL LINES WHEN DISABLED
+//==================================================
+if not enableDHL
+    if array.size(highLines) > 0
+        for i = 0 to array.size(highLines) - 1
+            line.delete(array.get(highLines, i))
+
+    if array.size(lowLines) > 0
+        for i = 0 to array.size(lowLines) - 1
+            line.delete(array.get(lowLines, i))
+
+    array.clear(highLines)
+    array.clear(lowLines)
+
+    highLine := na
+    lowLine := na
+
+//==================================================
+// DRAW DAILY HIGH / LOW
+//==================================================
+if enableDHL
+
+    if newDay
+
+        // Finish previous day's lines
+        if not na(highLine)
+            line.set_xy2(highLine, bar_index - 1, dayHigh)
+
+        if not na(lowLine)
+            line.set_xy2(lowLine, bar_index - 1, dayLow)
+
+        // Start new day
+        dayHigh := high
+        dayLow := low
+        dayStart := bar_index
+
+        highLine := line.new(
+             dayStart,
+             dayHigh,
+             dayStart,
+             dayHigh,
+             color = highColor,
+             width = lineWidth,
+             style = lineStyle)
+
+        lowLine := line.new(
+             dayStart,
+             dayLow,
+             dayStart,
+             dayLow,
+             color = lowColor,
+             width = lineWidth,
+             style = lineStyle)
+
+        array.push(highLines, highLine)
+        array.push(lowLines, lowLine)
+
+    else
+
+        dayHigh := math.max(dayHigh, high)
+        dayLow := math.min(dayLow, low)
+
+        line.set_xy1(highLine, dayStart, dayHigh)
+        line.set_xy2(highLine, bar_index, dayHigh)
+
+        line.set_xy1(lowLine, dayStart, dayLow)
+        line.set_xy2(lowLine, bar_index, dayLow)
+
+        // Update style dynamically
+        line.set_color(highLine, highColor)
+        line.set_color(lowLine, lowColor)
+
+        line.set_width(highLine, lineWidth)
+        line.set_width(lowLine, lineWidth)
+
+        line.set_style(highLine, lineStyle)
+        line.set_style(lowLine, lineStyle)
