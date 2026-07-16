@@ -256,16 +256,6 @@ if enableDHL
         line.set_xy1(lowLine, dayStart, dayLow)
         line.set_xy2(lowLine, bar_index, dayLow)
 
-        // Update style dynamically
-        line.set_color(highLine, highColor)
-        line.set_color(lowLine, lowColor)
-
-        line.set_width(highLine, lineWidth)
-        line.set_width(lowLine, lineWidth)
-
-        line.set_style(highLine, lineStyle)
-        line.set_style(lowLine, lineStyle)
-
 //==================================================
 // PREVIOUS DAY HIGH / LOW SETTINGS
 //==================================================
@@ -281,12 +271,16 @@ pdLineStyle = pdLineStyleInput == "Solid" ? line.style_solid : pdLineStyleInput 
 //==================================================
 // PREVIOUS DAY HIGH / LOW LOGIC
 //==================================================
-[pdHigh, pdLow] = request.security(syminfo.tickerid, "D", [high[1], low[1]], lookahead=barmerge.lookahead_on)
-
 var line pdHighLine = na
 var line pdLowLine = na
 
+pdHigh = float(na)
+pdLow = float(na)
+
 if enablePDHL
+    [pdHighSec, pdLowSec] = request.security(syminfo.tickerid, "D", [high[1], low[1]], lookahead=barmerge.lookahead_on)
+    pdHigh := pdHighSec
+    pdLow := pdLowSec
 
     if newDay
 
@@ -304,15 +298,9 @@ if enablePDHL
 
         if not na(pdHighLine) and not na(pdHigh)
             line.set_xy2(pdHighLine, bar_index, pdHigh)
-            line.set_color(pdHighLine, pdHighColor)
-            line.set_width(pdHighLine, pdLineWidth)
-            line.set_style(pdHighLine, pdLineStyle)
 
         if not na(pdLowLine) and not na(pdLow)
             line.set_xy2(pdLowLine, bar_index, pdLow)
-            line.set_color(pdLowLine, pdLowColor)
-            line.set_width(pdLowLine, pdLineWidth)
-            line.set_style(pdLowLine, pdLineStyle)
 
 //==================================================
 // PREVIOUS DAY HIGH / LOW ALERTS
@@ -336,14 +324,17 @@ pwLineStyle = pwLineStyleInput == "Solid" ? line.style_solid : pwLineStyleInput 
 //==================================================
 // PREVIOUS WEEK HIGH / LOW LOGIC
 //==================================================
-newWeek = timeframe.change("W")
-
-[pwHigh, pwLow] = request.security(syminfo.tickerid, "W", [high[1], low[1]], lookahead=barmerge.lookahead_on)
-
 var line pwHighLine = na
 var line pwLowLine = na
 
+pwHigh = float(na)
+pwLow = float(na)
+
 if enablePWHL
+    newWeek = timeframe.change("W")
+    [pwHighSec, pwLowSec] = request.security(syminfo.tickerid, "W", [high[1], low[1]], lookahead=barmerge.lookahead_on)
+    pwHigh := pwHighSec
+    pwLow := pwLowSec
 
     if newWeek
 
@@ -361,15 +352,9 @@ if enablePWHL
 
         if not na(pwHighLine) and not na(pwHigh)
             line.set_xy2(pwHighLine, bar_index, pwHigh)
-            line.set_color(pwHighLine, pwHighColor)
-            line.set_width(pwHighLine, pwLineWidth)
-            line.set_style(pwHighLine, pwLineStyle)
 
         if not na(pwLowLine) and not na(pwLow)
             line.set_xy2(pwLowLine, bar_index, pwLow)
-            line.set_color(pwLowLine, pwLowColor)
-            line.set_width(pwLowLine, pwLineWidth)
-            line.set_style(pwLowLine, pwLineStyle)
 
 //==================================================
 // PREVIOUS MONTH HIGH / LOW SETTINGS
@@ -386,14 +371,17 @@ pmLineStyle = pmLineStyleInput == "Solid" ? line.style_solid : pmLineStyleInput 
 //==================================================
 // PREVIOUS MONTH HIGH / LOW LOGIC
 //==================================================
-newMonth = timeframe.change("M")
-
-[pmHigh, pmLow] = request.security(syminfo.tickerid, "M", [high[1], low[1]], lookahead=barmerge.lookahead_on)
-
 var line pmHighLine = na
 var line pmLowLine = na
 
+pmHigh = float(na)
+pmLow = float(na)
+
 if enablePMHL
+    newMonth = timeframe.change("M")
+    [pmHighSec, pmLowSec] = request.security(syminfo.tickerid, "M", [high[1], low[1]], lookahead=barmerge.lookahead_on)
+    pmHigh := pmHighSec
+    pmLow := pmLowSec
 
     if newMonth
 
@@ -411,15 +399,9 @@ if enablePMHL
 
         if not na(pmHighLine) and not na(pmHigh)
             line.set_xy2(pmHighLine, bar_index, pmHigh)
-            line.set_color(pmHighLine, pmHighColor)
-            line.set_width(pmHighLine, pmLineWidth)
-            line.set_style(pmHighLine, pmLineStyle)
 
         if not na(pmLowLine) and not na(pmLow)
             line.set_xy2(pmLowLine, bar_index, pmLow)
-            line.set_color(pmLowLine, pmLowColor)
-            line.set_width(pmLowLine, pmLineWidth)
-            line.set_style(pmLowLine, pmLineStyle)
 
 //==================================================
 // VWAP
@@ -431,7 +413,15 @@ vwapShowBands = input.bool(false, "Show Bands", group=groupVWAP)
 vwapBandsMult = input.float(2.0, "Bands StdDev", minval=0.001, maxval=50, group=groupVWAP)
 
 // VWAP Calculation
-[vwapValue, vwapUpper, vwapLower] = ta.vwap(hlc3, newDay, vwapBandsMult)
+vwapValue = float(na)
+vwapUpper = float(na)
+vwapLower = float(na)
+
+if enableVWAP
+    [vwapValueSec, vwapUpperSec, vwapLowerSec] = ta.vwap(hlc3, newDay, vwapBandsMult)
+    vwapValue := vwapValueSec
+    vwapUpper := vwapUpperSec
+    vwapLower := vwapLowerSec
 
 // VWAP Plots
 plot(enableVWAP ? vwapValue : na, title="VWAP", color=vwapColor, linewidth=2)
