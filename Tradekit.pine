@@ -12,12 +12,12 @@ enableEMA3      = input.bool(true,  "Enable EMA 3", group=groupFeatures)
 enableEMA4      = input.bool(true,  "Enable EMA 4", group=groupFeatures)
 enableInsideBar = input.bool(true,  "Enable Inside Bar", group=groupFeatures)
 enableBB = input.bool(true, "Enable Bollinger Bands", group=groupFeatures)
-enableDHL = input.bool(true, "Enable Previous Day High/Low", group=groupFeatures)
+enableDHL = input.bool(true, "Enable Daily High/Low", group=groupFeatures)
 
 //==================================================
 // SOURCE
 //==================================================
-src = input.source(close, "Source")
+src = input.source(close, "EMA Source")
 
 //==================================================
 // EMA 1
@@ -104,6 +104,7 @@ alertcondition(enableInsideBar and insideBar,
 //==================================================
 // BOLLINGER BANDS
 //==================================================
+// Adapted from TradingView's built-in Bollinger Bands indicator (open-source, Mozilla Public License 2.0).
 groupBB = "Bollinger Bands"
 
 TT_LENGTH  = "The time period to be used in calculating the MA which creates the base for the Upper and Lower Bands."
@@ -155,10 +156,6 @@ fill(pUpper, pLower,
      title="BB Fill",
      color=enableBB ? color.rgb(33,150,243,95) : na)
 
-
-//@version=6
-// indicator("Daily High / Low", overlay = true)
-
 //==================================================
 // SETTINGS
 //==================================================
@@ -197,24 +194,6 @@ var line lowLine = na
 
 var line[] highLines = array.new_line()
 var line[] lowLines = array.new_line()
-
-//==================================================
-// DELETE ALL LINES WHEN DISABLED
-//==================================================
-if not enableDHL
-    if array.size(highLines) > 0
-        for i = 0 to array.size(highLines) - 1
-            line.delete(array.get(highLines, i))
-
-    if array.size(lowLines) > 0
-        for i = 0 to array.size(lowLines) - 1
-            line.delete(array.get(lowLines, i))
-
-    array.clear(highLines)
-    array.clear(lowLines)
-
-    highLine := na
-    lowLine := na
 
 //==================================================
 // DRAW DAILY HIGH / LOW
