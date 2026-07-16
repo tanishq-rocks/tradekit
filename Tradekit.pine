@@ -1,5 +1,5 @@
 //@version=6
-indicator("TradeKit", shorttitle="TradeKit", overlay=true)
+indicator("TradeKit", shorttitle="TradeKit", overlay=true, max_lines_count=500)
 
 //==================================================
 // FEATURES
@@ -13,6 +13,10 @@ enableMA4       = input.bool(true,  "Enable MA 4", group=groupFeatures)
 enableInsideBar = input.bool(true,  "Enable Inside Bar", group=groupFeatures)
 enableBB = input.bool(true, "Enable Bollinger Bands", group=groupFeatures)
 enableDHL = input.bool(true, "Enable Daily High/Low", group=groupFeatures)
+enablePDHL      = input.bool(true,  "Enable Previous Day High/Low", group=groupFeatures)
+enablePWHL      = input.bool(false, "Enable Previous Week High/Low", group=groupFeatures)
+enablePMHL      = input.bool(false, "Enable Previous Month High/Low", group=groupFeatures)
+enableVWAP      = input.bool(false, "Enable VWAP", group=groupFeatures)
 
 //==================================================
 // SOURCE
@@ -270,3 +274,197 @@ if enableDHL
 
         line.set_style(highLine, lineStyle)
         line.set_style(lowLine, lineStyle)
+
+//==================================================
+// PREVIOUS DAY HIGH / LOW SETTINGS
+//==================================================
+groupPDHL = "Previous Day High/Low"
+
+pdHighColor      = input.color(color.orange, "High Color", group=groupPDHL)
+pdLowColor       = input.color(color.orange, "Low Color", group=groupPDHL)
+pdLineWidth      = input.int(1, "Line Width", minval=1, maxval=5, group=groupPDHL)
+pdLineStyleInput = input.string(
+     "Dashed",
+     "Line Style",
+     options = ["Solid", "Dashed", "Dotted"],
+     group = groupPDHL)
+
+pdLineStyle =
+     pdLineStyleInput == "Solid"  ? line.style_solid :
+     pdLineStyleInput == "Dashed" ? line.style_dashed :
+                                     line.style_dotted
+
+//==================================================
+// PREVIOUS DAY HIGH / LOW LOGIC
+//==================================================
+[pdHigh, pdLow] = request.security(syminfo.tickerid, "D", [high[1], low[1]], lookahead=barmerge.lookahead_on)
+
+var line pdHighLine = na
+var line pdLowLine = na
+
+if enablePDHL
+
+    if newDay
+
+        if not na(pdHigh)
+            pdHighLine := line.new(bar_index, pdHigh, bar_index, pdHigh, color=pdHighColor, width=pdLineWidth, style=pdLineStyle)
+        else
+            pdHighLine := na
+
+        if not na(pdLow)
+            pdLowLine := line.new(bar_index, pdLow, bar_index, pdLow, color=pdLowColor, width=pdLineWidth, style=pdLineStyle)
+        else
+            pdLowLine := na
+
+    else
+
+        if not na(pdHighLine) and not na(pdHigh)
+            line.set_xy2(pdHighLine, bar_index, pdHigh)
+            line.set_color(pdHighLine, pdHighColor)
+            line.set_width(pdHighLine, pdLineWidth)
+            line.set_style(pdHighLine, pdLineStyle)
+
+        if not na(pdLowLine) and not na(pdLow)
+            line.set_xy2(pdLowLine, bar_index, pdLow)
+            line.set_color(pdLowLine, pdLowColor)
+            line.set_width(pdLowLine, pdLineWidth)
+            line.set_style(pdLowLine, pdLineStyle)
+
+//==================================================
+// PREVIOUS WEEK HIGH / LOW SETTINGS
+//==================================================
+groupPWHL = "Previous Week High/Low"
+
+pwHighColor      = input.color(color.purple, "High Color", group=groupPWHL)
+pwLowColor       = input.color(color.purple, "Low Color", group=groupPWHL)
+pwLineWidth      = input.int(1, "Line Width", minval=1, maxval=5, group=groupPWHL)
+pwLineStyleInput = input.string(
+     "Dashed",
+     "Line Style",
+     options = ["Solid", "Dashed", "Dotted"],
+     group = groupPWHL)
+
+pwLineStyle =
+     pwLineStyleInput == "Solid"  ? line.style_solid :
+     pwLineStyleInput == "Dashed" ? line.style_dashed :
+                                     line.style_dotted
+
+//==================================================
+// PREVIOUS WEEK HIGH / LOW LOGIC
+//==================================================
+newWeek = timeframe.change("W")
+
+[pwHigh, pwLow] = request.security(syminfo.tickerid, "W", [high[1], low[1]], lookahead=barmerge.lookahead_on)
+
+var line pwHighLine = na
+var line pwLowLine = na
+
+if enablePWHL
+
+    if newWeek
+
+        if not na(pwHigh)
+            pwHighLine := line.new(bar_index, pwHigh, bar_index, pwHigh, color=pwHighColor, width=pwLineWidth, style=pwLineStyle)
+        else
+            pwHighLine := na
+
+        if not na(pwLow)
+            pwLowLine := line.new(bar_index, pwLow, bar_index, pwLow, color=pwLowColor, width=pwLineWidth, style=pwLineStyle)
+        else
+            pwLowLine := na
+
+    else
+
+        if not na(pwHighLine) and not na(pwHigh)
+            line.set_xy2(pwHighLine, bar_index, pwHigh)
+            line.set_color(pwHighLine, pwHighColor)
+            line.set_width(pwHighLine, pwLineWidth)
+            line.set_style(pwHighLine, pwLineStyle)
+
+        if not na(pwLowLine) and not na(pwLow)
+            line.set_xy2(pwLowLine, bar_index, pwLow)
+            line.set_color(pwLowLine, pwLowColor)
+            line.set_width(pwLowLine, pwLineWidth)
+            line.set_style(pwLowLine, pwLineStyle)
+
+//==================================================
+// PREVIOUS MONTH HIGH / LOW SETTINGS
+//==================================================
+groupPMHL = "Previous Month High/Low"
+
+pmHighColor      = input.color(color.teal, "High Color", group=groupPMHL)
+pmLowColor       = input.color(color.teal, "Low Color", group=groupPMHL)
+pmLineWidth      = input.int(1, "Line Width", minval=1, maxval=5, group=groupPMHL)
+pmLineStyleInput = input.string(
+     "Dashed",
+     "Line Style",
+     options = ["Solid", "Dashed", "Dotted"],
+     group = groupPMHL)
+
+pmLineStyle =
+     pmLineStyleInput == "Solid"  ? line.style_solid :
+     pmLineStyleInput == "Dashed" ? line.style_dashed :
+                                     line.style_dotted
+
+//==================================================
+// PREVIOUS MONTH HIGH / LOW LOGIC
+//==================================================
+newMonth = timeframe.change("M")
+
+[pmHigh, pmLow] = request.security(syminfo.tickerid, "M", [high[1], low[1]], lookahead=barmerge.lookahead_on)
+
+var line pmHighLine = na
+var line pmLowLine = na
+
+if enablePMHL
+
+    if newMonth
+
+        if not na(pmHigh)
+            pmHighLine := line.new(bar_index, pmHigh, bar_index, pmHigh, color=pmHighColor, width=pmLineWidth, style=pmLineStyle)
+        else
+            pmHighLine := na
+
+        if not na(pmLow)
+            pmLowLine := line.new(bar_index, pmLow, bar_index, pmLow, color=pmLowColor, width=pmLineWidth, style=pmLineStyle)
+        else
+            pmLowLine := na
+
+    else
+
+        if not na(pmHighLine) and not na(pmHigh)
+            line.set_xy2(pmHighLine, bar_index, pmHigh)
+            line.set_color(pmHighLine, pmHighColor)
+            line.set_width(pmHighLine, pmLineWidth)
+            line.set_style(pmHighLine, pmLineStyle)
+
+        if not na(pmLowLine) and not na(pmLow)
+            line.set_xy2(pmLowLine, bar_index, pmLow)
+            line.set_color(pmLowLine, pmLowColor)
+            line.set_width(pmLowLine, pmLineWidth)
+            line.set_style(pmLowLine, pmLineStyle)
+
+//==================================================
+// VWAP
+//==================================================
+groupVWAP = "VWAP"
+
+vwapColor     = input.color(color.yellow, "VWAP Color", group=groupVWAP)
+vwapShowBands = input.bool(false, "Show Bands", group=groupVWAP)
+vwapBandsMult = input.float(2.0, "Bands StdDev",
+     minval=0.001,
+     maxval=50,
+     group=groupVWAP)
+
+// VWAP Calculation
+[vwapValue, vwapUpper, vwapLower] = ta.vwap(hlc3, newDay, vwapBandsMult)
+
+// VWAP Plots
+plot(enableVWAP ? vwapValue : na, title="VWAP", color=vwapColor, linewidth=2)
+
+pVWAPUpper = plot(enableVWAP and vwapShowBands ? vwapUpper : na, title="VWAP Upper Band", color=vwapColor)
+pVWAPLower = plot(enableVWAP and vwapShowBands ? vwapLower : na, title="VWAP Lower Band", color=vwapColor)
+
+fill(pVWAPUpper, pVWAPLower,
+     title="VWAP Band Fill",
+     color=enableVWAP and vwapShowBands ? color.new(vwapColor, 90) : na)
