@@ -11,6 +11,7 @@ enableMA2       = input.bool(true,  "Enable MA 2", group=groupFeatures)
 enableMA3       = input.bool(true,  "Enable MA 3", group=groupFeatures)
 enableMA4       = input.bool(true,  "Enable MA 4", group=groupFeatures)
 enableInsideBar = input.bool(true,  "Enable Inside Bar", group=groupFeatures)
+enableOutsideBar = input.bool(true,  "Enable Outside Bar", group=groupFeatures)
 enableBB = input.bool(true, "Enable Bollinger Bands", group=groupFeatures)
 enableDHL = input.bool(true, "Enable Daily High/Low", group=groupFeatures)
 enablePDHL      = input.bool(true,  "Enable Previous Day High/Low", group=groupFeatures)
@@ -144,6 +145,40 @@ plotshape(
 alertcondition(enableInsideBar and insideBar,
      title="Inside Bar",
      message="Inside Bar detected")
+
+//==================================================
+// OUTSIDE BAR SETTINGS
+//==================================================
+groupOB = "Outside Bar"
+
+outsideColor = input.color(color.fuchsia, "Outside Bar Color", group=groupOB)
+showOBLabel = input.bool(false, "Show OB Label", group=groupOB)
+
+//==================================================
+// OUTSIDE BAR LOGIC
+//==================================================
+outsideBar = enableOutsideBar and barstate.isconfirmed and high > high[1] and low < low[1]
+
+// Color candle
+barcolor(outsideBar ? outsideColor : na)
+
+// Label
+plotshape(
+     showOBLabel and outsideBar,
+     title="Outside Bar",
+     style=shape.triangledown,
+     location=location.abovebar,
+     color=outsideColor,
+     size=size.tiny,
+     text="OB"
+)
+
+//==================================================
+// ALERT
+//==================================================
+alertcondition(enableOutsideBar and outsideBar,
+     title="Outside Bar",
+     message="Outside Bar detected")
 
 //==================================================
 // BOLLINGER BANDS
