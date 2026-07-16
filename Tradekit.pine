@@ -6,10 +6,10 @@ indicator("TradeKit", shorttitle="TradeKit", overlay=true)
 //==================================================
 groupFeatures = "Features"
 
-enableEMA1      = input.bool(true,  "Enable EMA 1", group=groupFeatures)
-enableEMA2      = input.bool(true,  "Enable EMA 2", group=groupFeatures)
-enableEMA3      = input.bool(true,  "Enable EMA 3", group=groupFeatures)
-enableEMA4      = input.bool(true,  "Enable EMA 4", group=groupFeatures)
+enableMA1       = input.bool(true,  "Enable MA 1", group=groupFeatures)
+enableMA2       = input.bool(true,  "Enable MA 2", group=groupFeatures)
+enableMA3       = input.bool(true,  "Enable MA 3", group=groupFeatures)
+enableMA4       = input.bool(true,  "Enable MA 4", group=groupFeatures)
 enableInsideBar = input.bool(true,  "Enable Inside Bar", group=groupFeatures)
 enableBB = input.bool(true, "Enable Bollinger Bands", group=groupFeatures)
 enableDHL = input.bool(true, "Enable Daily High/Low", group=groupFeatures)
@@ -20,52 +20,76 @@ enableDHL = input.bool(true, "Enable Daily High/Low", group=groupFeatures)
 src = input.source(close, "EMA Source")
 
 //==================================================
-// EMA 1
+// SHARED FUNCTIONS
 //==================================================
-groupEMA1 = "EMA 1"
-
-len1   = input.int(9, "Length", minval=1, group=groupEMA1)
-color1 = input.color(color.blue, "Color", group=groupEMA1)
-
-//==================================================
-// EMA 2
-//==================================================
-groupEMA2 = "EMA 2"
-
-len2   = input.int(13, "Length", minval=1, group=groupEMA2)
-color2 = input.color(color.aqua, "Color", group=groupEMA2)
+// MA Function
+ma(source, length, _type) =>
+    switch _type
+        "SMA"         => ta.sma(source, length)
+        "EMA"         => ta.ema(source, length)
+        "SMMA (RMA)"  => ta.rma(source, length)
+        "WMA"         => ta.wma(source, length)
+        "VWMA"        => ta.vwma(source, length)
 
 //==================================================
-// EMA 3
+// MA 1
 //==================================================
-groupEMA3 = "EMA 3"
+groupMA1 = "MA 1"
 
-len3   = input.int(50, "Length", minval=1, group=groupEMA3)
-color3 = input.color(color.green, "Color", group=groupEMA3)
-
-//==================================================
-// EMA 4
-//==================================================
-groupEMA4 = "EMA 4"
-
-len4   = input.int(200, "Length", minval=1, group=groupEMA4)
-color4 = input.color(color.red, "Color", group=groupEMA4)
+len1   = input.int(9, "Length", minval=1, group=groupMA1)
+type1  = input.string("EMA", "Type",
+     options=["SMA", "EMA", "SMMA (RMA)", "WMA", "VWMA"],
+     group=groupMA1)
+color1 = input.color(color.blue, "Color", group=groupMA1)
 
 //==================================================
-// EMA CALCULATIONS
+// MA 2
 //==================================================
-ema1 = ta.ema(src, len1)
-ema2 = ta.ema(src, len2)
-ema3 = ta.ema(src, len3)
-ema4 = ta.ema(src, len4)
+groupMA2 = "MA 2"
+
+len2   = input.int(13, "Length", minval=1, group=groupMA2)
+type2  = input.string("EMA", "Type",
+     options=["SMA", "EMA", "SMMA (RMA)", "WMA", "VWMA"],
+     group=groupMA2)
+color2 = input.color(color.aqua, "Color", group=groupMA2)
 
 //==================================================
-// EMA PLOTS
+// MA 3
 //==================================================
-plot(enableEMA1 ? ema1 : na, title="EMA 1", color=color1, linewidth=1)
-plot(enableEMA2 ? ema2 : na, title="EMA 2", color=color2, linewidth=1)
-plot(enableEMA3 ? ema3 : na, title="EMA 3", color=color3, linewidth=1)
-plot(enableEMA4 ? ema4 : na, title="EMA 4", color=color4, linewidth=1)
+groupMA3 = "MA 3"
+
+len3   = input.int(50, "Length", minval=1, group=groupMA3)
+type3  = input.string("EMA", "Type",
+     options=["SMA", "EMA", "SMMA (RMA)", "WMA", "VWMA"],
+     group=groupMA3)
+color3 = input.color(color.green, "Color", group=groupMA3)
+
+//==================================================
+// MA 4
+//==================================================
+groupMA4 = "MA 4"
+
+len4   = input.int(200, "Length", minval=1, group=groupMA4)
+type4  = input.string("EMA", "Type",
+     options=["SMA", "EMA", "SMMA (RMA)", "WMA", "VWMA"],
+     group=groupMA4)
+color4 = input.color(color.red, "Color", group=groupMA4)
+
+//==================================================
+// MA CALCULATIONS
+//==================================================
+ma1 = ma(src, len1, type1)
+ma2 = ma(src, len2, type2)
+ma3 = ma(src, len3, type3)
+ma4 = ma(src, len4, type4)
+
+//==================================================
+// MA PLOTS
+//==================================================
+plot(enableMA1 ? ma1 : na, title="MA 1", color=color1, linewidth=1)
+plot(enableMA2 ? ma2 : na, title="MA 2", color=color2, linewidth=1)
+plot(enableMA3 ? ma3 : na, title="MA 3", color=color3, linewidth=1)
+plot(enableMA4 ? ma4 : na, title="MA 4", color=color4, linewidth=1)
 
 //==================================================
 // INSIDE BAR SETTINGS
@@ -131,15 +155,6 @@ bbOffset = input.int(0, "Offset",
      maxval=500,
      display=display.none,
      group=groupBB)
-
-// MA Function
-ma(source, length, _type) =>
-    switch _type
-        "SMA"         => ta.sma(source, length)
-        "EMA"         => ta.ema(source, length)
-        "SMMA (RMA)"  => ta.rma(source, length)
-        "WMA"         => ta.wma(source, length)
-        "VWMA"        => ta.vwma(source, length)
 
 // BB Calculation
 basis = ma(bbSrc, bbLength, bbMAType)
