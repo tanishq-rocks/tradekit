@@ -1,5 +1,6 @@
 //@version=6
 indicator("TradeKit", shorttitle="TradeKit", overlay=true, max_lines_count=500)
+// Version 2.0.0
 
 //==================================================
 // FEATURES
