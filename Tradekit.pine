@@ -17,6 +17,7 @@ enablePDHL      = input.bool(true,  "Enable Previous Day High/Low", group=groupF
 enablePWHL      = input.bool(false, "Enable Previous Week High/Low", group=groupFeatures)
 enablePMHL      = input.bool(false, "Enable Previous Month High/Low", group=groupFeatures)
 enableVWAP      = input.bool(false, "Enable VWAP", group=groupFeatures)
+enableDashboard = input.bool(false, "Show Dashboard", group=groupFeatures)
 
 //==================================================
 // SOURCE
@@ -94,6 +95,21 @@ plot(enableMA1 ? ma1 : na, title="MA 1", color=color1, linewidth=1)
 plot(enableMA2 ? ma2 : na, title="MA 2", color=color2, linewidth=1)
 plot(enableMA3 ? ma3 : na, title="MA 3", color=color3, linewidth=1)
 plot(enableMA4 ? ma4 : na, title="MA 4", color=color4, linewidth=1)
+
+//==================================================
+// MA CROSSOVER ALERTS
+//==================================================
+alertcondition(enableMA1 and enableMA2 and (ta.crossover(ma1, ma2) or ta.crossunder(ma1, ma2)),
+     title="MA 1 / MA 2 Cross",
+     message="MA 1 crossed MA 2")
+
+alertcondition(enableMA2 and enableMA3 and (ta.crossover(ma2, ma3) or ta.crossunder(ma2, ma3)),
+     title="MA 2 / MA 3 Cross",
+     message="MA 2 crossed MA 3")
+
+alertcondition(enableMA3 and enableMA4 and (ta.crossover(ma3, ma4) or ta.crossunder(ma3, ma4)),
+     title="MA 3 / MA 4 Cross",
+     message="MA 3 crossed MA 4")
 
 //==================================================
 // INSIDE BAR SETTINGS
@@ -174,6 +190,17 @@ pLower = plot(enableBB ? lower : na, "BB Lower", color=#089981, offset=bbOffset)
 fill(pUpper, pLower,
      title="BB Fill",
      color=enableBB ? color.rgb(33,150,243,95) : na)
+
+//==================================================
+// BB ALERTS
+//==================================================
+alertcondition(enableBB and ta.crossover(close, upper),
+     title="BB Upper Cross",
+     message="Price crossed above the Bollinger Band")
+
+alertcondition(enableBB and ta.crossunder(close, lower),
+     title="BB Lower Cross",
+     message="Price crossed below the Bollinger Band")
 
 //==================================================
 // SETTINGS
@@ -331,6 +358,17 @@ if enablePDHL
             line.set_style(pdLowLine, pdLineStyle)
 
 //==================================================
+// PREVIOUS DAY HIGH / LOW ALERTS
+//==================================================
+alertcondition(enablePDHL and not na(pdHigh) and ta.crossover(close, pdHigh),
+     title="Previous Day High Break",
+     message="Price broke above the previous day's high")
+
+alertcondition(enablePDHL and not na(pdLow) and ta.crossunder(close, pdLow),
+     title="Previous Day Low Break",
+     message="Price broke below the previous day's low")
+
+//==================================================
 // PREVIOUS WEEK HIGH / LOW SETTINGS
 //==================================================
 groupPWHL = "Previous Week High/Low"
@@ -468,3 +506,64 @@ pVWAPLower = plot(enableVWAP and vwapShowBands ? vwapLower : na, title="VWAP Low
 fill(pVWAPUpper, pVWAPLower,
      title="VWAP Band Fill",
      color=enableVWAP and vwapShowBands ? color.new(vwapColor, 90) : na)
+
+//==================================================
+// DASHBOARD SETTINGS
+//==================================================
+groupDashboard = "Dashboard"
+
+tablePositionInput = input.string("Top Right", "Position",
+     options=["Top Left", "Top Right", "Bottom Left", "Bottom Right"],
+     group=groupDashboard)
+
+dashTextColor = input.color(color.white, "Text Color", group=groupDashboard)
+dashBgColor   = input.color(color.new(color.black, 20), "Background Color", group=groupDashboard)
+
+tablePosition =
+     tablePositionInput == "Top Left"    ? position.top_left :
+     tablePositionInput == "Top Right"   ? position.top_right :
+     tablePositionInput == "Bottom Left" ? position.bottom_left :
+                                            position.bottom_right
+
+//==================================================
+// DASHBOARD
+//==================================================
+var table dashboard = table.new(tablePosition, 2, 7, border_width=1)
+
+if enableDashboard and barstate.islast
+    row = 0
+
+    if enableMA1
+        table.cell(dashboard, 0, row, "MA 1", text_color=dashTextColor, bgcolor=dashBgColor, text_halign=text.align_left)
+        table.cell(dashboard, 1, row, close > ma1 ? "Above" : "Below", text_color=dashTextColor, bgcolor=dashBgColor, text_halign=text.align_right)
+        row := row + 1
+
+    if enableMA2
+        table.cell(dashboard, 0, row, "MA 2", text_color=dashTextColor, bgcolor=dashBgColor, text_halign=text.align_left)
+        table.cell(dashboard, 1, row, close > ma2 ? "Above" : "Below", text_color=dashTextColor, bgcolor=dashBgColor, text_halign=text.align_right)
+        row := row + 1
+
+    if enableMA3
+        table.cell(dashboard, 0, row, "MA 3", text_color=dashTextColor, bgcolor=dashBgColor, text_halign=text.align_left)
+        table.cell(dashboard, 1, row, close > ma3 ? "Above" : "Below", text_color=dashTextColor, bgcolor=dashBgColor, text_halign=text.align_right)
+        row := row + 1
+
+    if enableMA4
+        table.cell(dashboard, 0, row, "MA 4", text_color=dashTextColor, bgcolor=dashBgColor, text_halign=text.align_left)
+        table.cell(dashboard, 1, row, close > ma4 ? "Above" : "Below", text_color=dashTextColor, bgcolor=dashBgColor, text_halign=text.align_right)
+        row := row + 1
+
+    if enableBB
+        bbPosition = close > upper ? "Above Upper" : close < lower ? "Below Lower" : "Inside"
+        table.cell(dashboard, 0, row, "BB Position", text_color=dashTextColor, bgcolor=dashBgColor, text_halign=text.align_left)
+        table.cell(dashboard, 1, row, bbPosition, text_color=dashTextColor, bgcolor=dashBgColor, text_halign=text.align_right)
+        row := row + 1
+
+    if enablePDHL
+        table.cell(dashboard, 0, row, "Dist. PD High", text_color=dashTextColor, bgcolor=dashBgColor, text_halign=text.align_left)
+        table.cell(dashboard, 1, row, na(pdHigh) ? "n/a" : str.tostring(close - pdHigh, format.mintick), text_color=dashTextColor, bgcolor=dashBgColor, text_halign=text.align_right)
+        row := row + 1
+
+        table.cell(dashboard, 0, row, "Dist. PD Low", text_color=dashTextColor, bgcolor=dashBgColor, text_halign=text.align_left)
+        table.cell(dashboard, 1, row, na(pdLow) ? "n/a" : str.tostring(close - pdLow, format.mintick), text_color=dashTextColor, bgcolor=dashBgColor, text_halign=text.align_right)
+        row := row + 1
