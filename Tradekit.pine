@@ -1,6 +1,6 @@
 //@version=6
-indicator("TradeKit", shorttitle="TradeKit", overlay=true, max_lines_count=500)
-// Version 2.0.0
+indicator("TradeKit", shorttitle="TradeKit", overlay=true, max_lines_count=500, max_boxes_count=500, max_labels_count=500)
+// Version 2.1.0
 
 //==================================================
 // FEATURES
@@ -20,6 +20,7 @@ enablePWHL      = input.bool(false, "Enable Previous Week High/Low", group=group
 enablePMHL      = input.bool(false, "Enable Previous Month High/Low", group=groupFeatures)
 enableVWAP      = input.bool(false, "Enable VWAP", group=groupFeatures)
 enableDashboard = input.bool(false, "Show Dashboard", group=groupFeatures)
+enableSessions = input.bool(true, "Enable Sessions", group=groupFeatures)
 
 //==================================================
 // SOURCE
@@ -430,6 +431,133 @@ pVWAPUpper = plot(enableVWAP and vwapShowBands ? vwapUpper : na, title="VWAP Upp
 pVWAPLower = plot(enableVWAP and vwapShowBands ? vwapLower : na, title="VWAP Lower Band", color=vwapColor)
 
 fill(pVWAPUpper, pVWAPLower, title="VWAP Band Fill", color=enableVWAP and vwapShowBands ? color.new(vwapColor, 90) : na)
+
+//==================================================
+// SESSIONS
+//==================================================
+// Adapted from TradingView's built-in Sessions indicator (open-source, Mozilla Public License 2.0).
+groupSessions = "Sessions"
+
+showSessionNames     = input.bool(true, "Show session names", group=groupSessions)
+showSessionOC        = input.bool(true, "Draw session open and close lines", group=groupSessions)
+showSessionTickRange = input.bool(true, "Show tick range for each session", group=groupSessions)
+showSessionAverage   = input.bool(true, "Show average price per session", group=groupSessions)
+
+TT_TIMEZONE = "The session's time zone, specified in either GMT notation (e.g., 'GMT-5') or as an IANA time zone database name (e.g., 'America/New_York'). We recommend the latter since it includes other time-related changes, such as daylight savings. Each session's time and on-chart label always use this timezone, which may differ from your chart's display timezone -- the on-chart label shows it explicitly so it's never ambiguous."
+
+groupSessionTokyo = "Tokyo Session"
+showSessionTokyo = input.bool(true, "Show session", group=groupSessionTokyo)
+sesTokyoName  = input.string("Tokyo", "Displayed name", group=groupSessionTokyo)
+sesTokyoTime  = input.session("0900-1500", "Session time", group=groupSessionTokyo)
+sesTokyoTZ    = input.string("Asia/Tokyo", "Session timezone", group=groupSessionTokyo, tooltip=TT_TIMEZONE)
+sesTokyoColor = input.color(color.new(#2962FF, 85), "Session color", group=groupSessionTokyo)
+
+groupSessionLondon = "London Session"
+showSessionLondon = input.bool(true, "Show session", group=groupSessionLondon)
+sesLondonName  = input.string("London", "Displayed name", group=groupSessionLondon)
+sesLondonTime  = input.session("0830-1630", "Session time", group=groupSessionLondon)
+sesLondonTZ    = input.string("Europe/London", "Session timezone", group=groupSessionLondon, tooltip=TT_TIMEZONE)
+sesLondonColor = input.color(color.new(#FF9800, 85), "Session color", group=groupSessionLondon)
+
+groupSessionNY = "New York Session"
+showSessionNY = input.bool(true, "Show session", group=groupSessionNY)
+sesNYName  = input.string("New York", "Displayed name", group=groupSessionNY)
+sesNYTime  = input.session("0930-1600", "Session time", group=groupSessionNY)
+sesNYTZ    = input.string("America/New_York", "Session timezone", group=groupSessionNY, tooltip=TT_TIMEZONE)
+sesNYColor = input.color(color.new(#089981, 85), "Session color", group=groupSessionNY)
+
+type SessionDisplay
+    box   sessionBox
+    label sessionLabel
+    line  openLine
+    line  avgLine
+    line  closeLine
+    float sumClose
+    int   numOfBars
+
+type SessionInfo
+    color  color
+    string name
+    string session
+    string timezone
+    SessionDisplay active = na
+
+method setName(SessionDisplay this, string name, string tz) =>
+    sessionLabel = this.sessionLabel
+    sessionBox = this.sessionBox
+    boxText = array.new<string>()
+    if showSessionTickRange
+        boxText.push("Range: " + str.tostring((sessionBox.get_top() - sessionBox.get_bottom()) / syminfo.mintick, format.mintick))
+    if showSessionAverage
+        boxText.push("Avg: " + str.tostring(this.sumClose / this.numOfBars, format.mintick))
+    if showSessionNames
+        boxText.push(name + " (" + tz + ")")
+    sessionLabel.set_y(sessionBox.get_bottom())
+    sessionLabel.set_text(array.join(boxText, "\n"))
+
+method createSessionDisplay(SessionInfo this) =>
+    boxColor = this.color
+    opaqueColor = color.new(boxColor, 0)
+    dis = SessionDisplay.new(sessionBox = box.new(bar_index, high, bar_index, low, bgcolor = boxColor, border_color = na), sessionLabel = label.new(bar_index, low, "", style = label.style_label_upper_left, textalign = text.align_left, textcolor = opaqueColor, color = color(na)), openLine = showSessionOC ? line.new(bar_index, open, bar_index, open, color = opaqueColor, style = line.style_dashed, width = 1) : na, closeLine = showSessionOC ? line.new(bar_index, close, bar_index, close, color = opaqueColor, style = line.style_dashed, width = 1) : na, avgLine = showSessionAverage ? line.new(bar_index, close, bar_index, close, style = line.style_dotted, width = 2, color = opaqueColor) : na, sumClose = close, numOfBars = 1)
+    if showSessionOC
+        linefill.new(dis.openLine, dis.closeLine, boxColor)
+    dis.setName(this.name, this.timezone)
+    this.active := dis
+
+method updateSessionDisplay(SessionInfo this) =>
+    sessionDisp = this.active
+    sessionBox = sessionDisp.sessionBox
+    openLine = sessionDisp.openLine
+    closeLine = sessionDisp.closeLine
+    avgLine = sessionDisp.avgLine
+    sessionDisp.sumClose += close
+    sessionDisp.numOfBars += 1
+
+    sessionBox.set_top(math.max(sessionBox.get_top(), high))
+    sessionBox.set_bottom(math.min(sessionBox.get_bottom(), low))
+    sessionBox.set_right(bar_index)
+    sessionDisp.setName(this.name, this.timezone)
+
+    if showSessionOC
+        openLine.set_x2(bar_index)
+        closeLine.set_x2(bar_index)
+        closeLine.set_y1(close)
+        closeLine.set_y2(close)
+
+    if showSessionAverage
+        avgLine.set_x2(bar_index)
+        avg = sessionDisp.sumClose / sessionDisp.numOfBars
+        avgLine.set_y1(avg)
+        avgLine.set_y2(avg)
+    sessionDisp
+
+method update(SessionInfo this) =>
+    bool isChange = timeframe.change("1D")
+    if (not na(time("", this.session, this.timezone)))
+        if na(this.active) or isChange
+            this.createSessionDisplay()
+        else
+            this.updateSessionDisplay()
+    else if not na(this.active)
+        this.active := na
+
+getSessionInfos() =>
+    array<SessionInfo> infos = array.new<SessionInfo>()
+    if showSessionTokyo
+        infos.push(SessionInfo.new(sesTokyoColor, sesTokyoName, sesTokyoTime, sesTokyoTZ))
+    if showSessionLondon
+        infos.push(SessionInfo.new(sesLondonColor, sesLondonName, sesLondonTime, sesLondonTZ))
+    if showSessionNY
+        infos.push(SessionInfo.new(sesNYColor, sesNYName, sesNYTime, sesNYTZ))
+    infos
+
+var array<SessionInfo> sessionInfos = getSessionInfos()
+
+// Sessions only make sense on intraday timeframes; silently skip on D/W/M
+// rather than erroring out the whole indicator.
+if enableSessions and not timeframe.isdwm
+    for info in sessionInfos
+        info.update()
 
 //==================================================
 // DASHBOARD SETTINGS
