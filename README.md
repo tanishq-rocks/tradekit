@@ -37,4 +37,4 @@ TradeKit is provided for educational and informational purposes only. It is not 
 
 ## Suggested GitHub topics
 
-`tradingview` `pine-script` `pine-script-v6` `technical-analysis` `trading-indicator` `trading-tools` `algorithmic-trading`
+`tradingview` `pinescript` `pine-script` `technical-analysis` `algorithmic-trading` `trading-indicator` `trading-tools` `vwap` `bollinger-bands` `moving-average`
