@@ -451,6 +451,7 @@ sesTokyoName  = input.string("Tokyo", "Displayed name", group=groupSessionTokyo)
 sesTokyoTime  = input.session("0900-1500", "Session time", group=groupSessionTokyo)
 sesTokyoTZ    = input.string("Asia/Tokyo", "Session timezone", group=groupSessionTokyo, tooltip=TT_TIMEZONE)
 sesTokyoColor = input.color(color.new(#2962FF, 85), "Session color", group=groupSessionTokyo)
+sesTokyoNotes = input.text_area("Majors: JPY, AUD, NZD\nKillzone (Asian): 06:30-10:30 IST (05:30-09:30 IST during US DST, ~Mar-Nov)", "Notes", group=groupSessionTokyo, tooltip="Freeform notes for this session, e.g. which symbols you want to trade. Supports multiple lines. Shown on the session's on-chart label.")
 
 groupSessionLondon = "London Session"
 showSessionLondon = input.bool(true, "Show session", group=groupSessionLondon)
@@ -458,6 +459,7 @@ sesLondonName  = input.string("London", "Displayed name", group=groupSessionLond
 sesLondonTime  = input.session("0830-1630", "Session time", group=groupSessionLondon)
 sesLondonTZ    = input.string("Europe/London", "Session timezone", group=groupSessionLondon, tooltip=TT_TIMEZONE)
 sesLondonColor = input.color(color.new(#FF9800, 85), "Session color", group=groupSessionLondon)
+sesLondonNotes = input.text_area("Majors: EUR, GBP, CHF\nKillzone (London): 12:30-15:30 IST (11:30-14:30 IST during US DST, ~Mar-Nov)", "Notes", group=groupSessionLondon, tooltip="Freeform notes for this session, e.g. which symbols you want to trade. Supports multiple lines. Shown on the session's on-chart label.")
 
 groupSessionNY = "New York Session"
 showSessionNY = input.bool(true, "Show session", group=groupSessionNY)
@@ -465,6 +467,7 @@ sesNYName  = input.string("New York", "Displayed name", group=groupSessionNY)
 sesNYTime  = input.session("0930-1600", "Session time", group=groupSessionNY)
 sesNYTZ    = input.string("America/New_York", "Session timezone", group=groupSessionNY, tooltip=TT_TIMEZONE)
 sesNYColor = input.color(color.new(#089981, 85), "Session color", group=groupSessionNY)
+sesNYNotes = input.text_area("Majors: USD, CAD\nKillzone (New York): 17:30-20:30 IST (16:30-19:30 IST during US DST, ~Mar-Nov)", "Notes", group=groupSessionNY, tooltip="Freeform notes for this session, e.g. which symbols you want to trade. Supports multiple lines. Shown on the session's on-chart label.")
 
 type SessionDisplay
     box   sessionBox
@@ -480,9 +483,10 @@ type SessionInfo
     string name
     string session
     string timezone
+    string notes
     SessionDisplay active = na
 
-method setName(SessionDisplay this, string name, string tz) =>
+method setName(SessionDisplay this, string name, string tz, string notes) =>
     sessionLabel = this.sessionLabel
     sessionBox = this.sessionBox
     boxText = array.new<string>()
@@ -492,6 +496,8 @@ method setName(SessionDisplay this, string name, string tz) =>
         boxText.push("Avg: " + str.tostring(this.sumClose / this.numOfBars, format.mintick))
     if showSessionNames
         boxText.push(name + " (" + tz + ")")
+    if notes != ""
+        boxText.push(notes)
     sessionLabel.set_y(sessionBox.get_bottom())
     sessionLabel.set_text(array.join(boxText, "\n"))
 
@@ -501,7 +507,7 @@ method createSessionDisplay(SessionInfo this) =>
     dis = SessionDisplay.new(sessionBox = box.new(bar_index, high, bar_index, low, bgcolor = boxColor, border_color = na), sessionLabel = label.new(bar_index, low, "", style = label.style_label_upper_left, textalign = text.align_left, textcolor = opaqueColor, color = color(na)), openLine = showSessionOC ? line.new(bar_index, open, bar_index, open, color = opaqueColor, style = line.style_dashed, width = 1) : na, closeLine = showSessionOC ? line.new(bar_index, close, bar_index, close, color = opaqueColor, style = line.style_dashed, width = 1) : na, avgLine = showSessionAverage ? line.new(bar_index, close, bar_index, close, style = line.style_dotted, width = 2, color = opaqueColor) : na, sumClose = close, numOfBars = 1)
     if showSessionOC
         linefill.new(dis.openLine, dis.closeLine, boxColor)
-    dis.setName(this.name, this.timezone)
+    dis.setName(this.name, this.timezone, this.notes)
     this.active := dis
 
 method updateSessionDisplay(SessionInfo this) =>
@@ -516,7 +522,7 @@ method updateSessionDisplay(SessionInfo this) =>
     sessionBox.set_top(math.max(sessionBox.get_top(), high))
     sessionBox.set_bottom(math.min(sessionBox.get_bottom(), low))
     sessionBox.set_right(bar_index)
-    sessionDisp.setName(this.name, this.timezone)
+    sessionDisp.setName(this.name, this.timezone, this.notes)
 
     if showSessionOC
         openLine.set_x2(bar_index)
@@ -544,11 +550,11 @@ method update(SessionInfo this) =>
 getSessionInfos() =>
     array<SessionInfo> infos = array.new<SessionInfo>()
     if showSessionTokyo
-        infos.push(SessionInfo.new(sesTokyoColor, sesTokyoName, sesTokyoTime, sesTokyoTZ))
+        infos.push(SessionInfo.new(color = sesTokyoColor, name = sesTokyoName, session = sesTokyoTime, timezone = sesTokyoTZ, notes = sesTokyoNotes))
     if showSessionLondon
-        infos.push(SessionInfo.new(sesLondonColor, sesLondonName, sesLondonTime, sesLondonTZ))
+        infos.push(SessionInfo.new(color = sesLondonColor, name = sesLondonName, session = sesLondonTime, timezone = sesLondonTZ, notes = sesLondonNotes))
     if showSessionNY
-        infos.push(SessionInfo.new(sesNYColor, sesNYName, sesNYTime, sesNYTZ))
+        infos.push(SessionInfo.new(color = sesNYColor, name = sesNYName, session = sesNYTime, timezone = sesNYTZ, notes = sesNYNotes))
     infos
 
 var array<SessionInfo> sessionInfos = getSessionInfos()

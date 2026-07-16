@@ -16,7 +16,7 @@ Every feature below has one master on/off toggle in the **Features** group at th
 - **Previous Day/Week/Month High/Low** — Classic higher-timeframe reference levels; prior-period extremes frequently act as support/resistance on the current chart. Previous Day is on by default, Week and Month are off by default to avoid cluttering the chart with levels most traders don't check every session.
 - **VWAP** — The volume-weighted average price, a fair-value benchmark widely used by intraday and institutional traders, with optional standard-deviation bands.
 - **Dashboard** — A compact table showing price relative to each enabled MA, your Bollinger Band position, and distance from the previous day's high/low, so you don't have to eyeball the chart to get the current read.
-- **Sessions** — Highlights the Tokyo, London, and New York trading sessions as colored boxes, each showing its open/close lines, tick range, and average price. Each session runs on its own configured timezone (shown directly on its on-chart label, e.g. "Tokyo (Asia/Tokyo)", so it's never ambiguous which clock it's using). Off by default to avoid clutter. Adapted from TradingView's built-in Sessions indicator. Intraday timeframes only (it's automatically skipped on Daily/Weekly/Monthly charts).
+- **Sessions** — Highlights the Tokyo, London, and New York trading sessions as colored boxes, each showing its open/close lines, tick range, and average price. Each session runs on its own configured timezone (shown directly on its on-chart label, e.g. "Tokyo (Asia/Tokyo)", so it's never ambiguous which clock it's using), and has a free-text "Notes" field (e.g. which symbols you're trading that session) that shows up right on the label when filled in. Off by default to avoid clutter. Adapted from TradingView's built-in Sessions indicator. Intraday timeframes only (it's automatically skipped on Daily/Weekly/Monthly charts).
 - **Alerts** — Every major event (MA crossovers between consecutive pairs, Bollinger Band crosses, previous-day high/low breaks, inside/outside bars) has a matching alert condition you can wire up from TradingView's alert dialog.
 
 ## Session timezones, explained
@@ -49,6 +49,37 @@ Notes:
 - IST (`UTC+5:30`) doesn't observe DST either, so its column shifts along with whichever UTC column applies.
 - The New York row crosses midnight in IST — e.g. "20:00–02:30 next day" means the session starts at 8 PM IST and runs past midnight into 2:30 AM IST.
 - DST date ranges above are approximate (they shift slightly year to year); TradeKit doesn't need you to track the exact date — the IANA timezone name handles the transition automatically.
+
+### Session notes
+
+Each of the three session settings groups (Tokyo Session, London Session, New York Session) ends with a **Notes** field — a multi-line text area (press Enter/Return inside it to start a new line, same as any normal text box), not a single-line box. Whatever you type shows up as extra line(s) directly on that session's on-chart label, right after its name and timezone, only while the session is active. Clear it and nothing extra is added — it costs you nothing unless you use it.
+
+Each session's Notes field comes pre-filled with two reference lines to start you off:
+
+1. **Majors** — the currencies most actively traded during that session, since liquidity for a currency tends to peak while its home market is open:
+   - Tokyo: JPY, AUD, NZD
+   - London: EUR, GBP, CHF
+   - New York: USD, CAD
+2. **Killzone** — a "killzone" is trading jargon (popularized by the ICT/"Smart Money Concepts" school of technical analysis) for a narrower, couple-hour window inside a session when institutional order flow is typically heaviest and moves are more likely to originate — narrower than the full exchange session TradeKit actually draws the box for. Killzones are conventionally quoted in New York time, but since that has the exact same DST headache [described above](#session-timezones-explained) — New York is UTC-5 in winter and UTC-4 in summer — we converted them to IST for you instead:
+   - Tokyo (Asian Killzone): **06:30–10:30 IST** standard, **05:30–09:30 IST** during US DST (roughly March–November)
+   - London (London Killzone): **12:30–15:30 IST** standard, **11:30–14:30 IST** during US DST
+   - New York (New York Killzone): **17:30–20:30 IST** standard, **16:30–19:30 IST** during US DST
+
+Notice the whole window shifts **one hour earlier in IST** while the US observes DST — that's the US clock moving forward, not IST moving (IST never observes DST). Both values are pre-filled directly in the note text so you always have the right one in front of you without needing to remember which half of the year it is.
+
+These defaults are just a starting point in an editable text field — edit, replace, or clear them freely. TradeKit doesn't use this text for any calculation or drawing; it's purely a visual reference for you, and treating the killzone hours above as gospel isn't the point here — cross-check them against whatever source you actually trade off of if precision matters to your strategy.
+
+For example, the default Tokyo session label reads:
+
+```
+Range: 42.5
+Avg: 151.23
+Tokyo (Asia/Tokyo)
+Majors: JPY, AUD, NZD
+Killzone (Asian): 06:30-10:30 IST (05:30-09:30 IST during US DST, ~Mar-Nov)
+```
+
+Notes are entirely local to your copy of the script (part of the indicator's saved settings on your chart), not published or shared anywhere.
 
 ## Getting started
 
