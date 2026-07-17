@@ -13,6 +13,7 @@ enableMA3       = input.bool(true,  "Enable MA 3", group=groupFeatures)
 enableMA4       = input.bool(true,  "Enable MA 4", group=groupFeatures)
 enableInsideBar = input.bool(true,  "Enable Inside Bar", group=groupFeatures)
 enableOutsideBar = input.bool(true,  "Enable Outside Bar", group=groupFeatures)
+enableConfirmationBar = input.bool(false, "Enable C2C Bar", group=groupFeatures)
 enableBB = input.bool(true, "Enable Bollinger Bands", group=groupFeatures)
 enableDHL = input.bool(true, "Enable Daily High/Low", group=groupFeatures)
 enablePDHL      = input.bool(true,  "Enable Previous Day High/Low", group=groupFeatures)
@@ -21,6 +22,7 @@ enablePMHL      = input.bool(false, "Enable Previous Month High/Low", group=grou
 enableVWAP      = input.bool(false, "Enable VWAP", group=groupFeatures)
 enableDashboard = input.bool(false, "Show Dashboard", group=groupFeatures)
 enableSessions = input.bool(true, "Enable Sessions", group=groupFeatures)
+
 
 //==================================================
 // SOURCE
@@ -147,6 +149,31 @@ plotshape(showOBLabel and outsideBar, title="Outside Bar", style=shape.triangled
 // ALERT
 //==================================================
 alertcondition(enableOutsideBar and outsideBar, title="Outside Bar", message="Outside Bar detected")
+
+//==================================================
+// C2C BAR SETTINGS
+//==================================================
+groupConfirmation = "C2C Bar"
+
+confirmBullColor = input.color(color.blue, "Bullish Color", group=groupConfirmation)
+confirmBearColor = input.color(color.black, "Bearish Color", group=groupConfirmation)
+
+//==================================================
+// C2C BAR LOGIC
+//==================================================
+// An inside bar (contained within the prior bar's range) whose close
+// continues in the direction of the prior bar: prior bar green and
+// this bar's close above the prior close, or prior bar red and this
+// bar's close below the prior close.
+prevGreen = close[1] > open[1]
+prevRed   = close[1] < open[1]
+isInsider = barstate.isconfirmed and high < high[1] and low > low[1]
+
+confirmBullish = enableConfirmationBar and isInsider and prevGreen and close[1] < close
+confirmBearish = enableConfirmationBar and isInsider and prevRed and close[1] > close
+
+// Color candle
+barcolor(confirmBullish ? confirmBullColor : confirmBearish ? confirmBearColor : na)
 
 //==================================================
 // BOLLINGER BANDS
