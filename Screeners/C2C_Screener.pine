@@ -38,7 +38,7 @@ g_lists = 'Preset Index Lists'
 
 tt_list_select = "Selecting a list here scans ONLY that list's chosen Page below, and ignores the Notes symbols above entirely." + "\n• request.security() allows at most 40 calls per script, so each list is pre-split into 40-symbol pages." + "\n• Pick the matching '<List Name> — Page' dropdown for whichever list you choose here." + "\n• Set this back to 'None (use Notes)' to scan your own pasted Notes symbols again."
 
-string i_list_select = input.string(defval='None (use Notes)', title='Preset Index List', options=['None (use Notes)', 'Nifty 50', 'Nifty Next 50', 'Nifty 100', 'Nifty 200', 'Nifty 500', 'Nifty LargeMidcap 250', 'Nifty Midcap 50', 'Nifty Midcap 100', 'Nifty Midcap 150', 'Nifty Smallcap 50', 'Nifty Smallcap 100', 'Nifty Smallcap 250', 'Nifty Microcap 250', 'Nifty Bank', 'Nifty Private Bank', 'Nifty PSU Bank', 'Nifty Auto', 'Nifty Finance', 'Nifty FMCG', 'Nifty Metal', 'Nifty Pharma', 'Nifty Realty'], tooltip=tt_list_select, group=g_lists)
+string i_list_select = input.string(defval='None (use Notes)', title='Preset Index List', options=['None (use Notes)', 'Nifty 50', 'Nifty Next 50', 'Nifty 100', 'Nifty 200', 'Nifty 500', 'Nifty LargeMidcap 250', 'Nifty Midcap 50', 'Nifty Midcap 100', 'Nifty Midcap 150', 'Nifty Smallcap 50', 'Nifty Smallcap 100', 'Nifty Smallcap 250', 'Nifty Microcap 250', 'Nifty Bank', 'Nifty Private Bank', 'Nifty PSU Bank', 'Nifty Auto', 'Nifty Finance', 'Nifty FMCG', 'Nifty Metal', 'Nifty Pharma', 'Nifty Realty', 'Forex'], tooltip=tt_list_select, group=g_lists)
 
 string i_page_nifty50 = input.string(defval='Page 1 (1-40)', title='Nifty 50 — Page', options=['Page 1 (1-40)', 'Page 2 (41-50)'], group=g_lists)
 string i_page_niftynext50 = input.string(defval='Page 1 (1-40)', title='Nifty Next 50 — Page', options=['Page 1 (1-40)', 'Page 2 (41-50)'], group=g_lists)
@@ -62,6 +62,7 @@ string i_page_niftyfmcg = input.string(defval='Page 1 (1-15)', title='Nifty FMCG
 string i_page_niftymetal = input.string(defval='Page 1 (1-15)', title='Nifty Metal — Page', options=['Page 1 (1-15)'], group=g_lists)
 string i_page_niftypharma = input.string(defval='Page 1 (1-20)', title='Nifty Pharma — Page', options=['Page 1 (1-20)'], group=g_lists)
 string i_page_niftyrealty = input.string(defval='Page 1 (1-10)', title='Nifty Realty — Page', options=['Page 1 (1-10)'], group=g_lists)
+string i_page_forex = input.string(defval='Page 1 (1-32)', title='Forex — Page', options=['Page 1 (1-32)'], group=g_lists)
 
 //_____________________________ Menu Index Reference Lists End
 
@@ -224,6 +225,11 @@ page_niftyrealty(sel) =>
         'Page 1 (1-10)' => "NSE:ABREL,NSE:ANANTRAJ,NSE:BRIGADE,NSE:DLF,NSE:GODREJPROP,NSE:LODHA,NSE:OBEROIRLTY,NSE:PHOENIXLTD,NSE:PRESTIGE,NSE:SOBHA"
         => ''
 
+page_forex(sel) =>
+    switch sel
+        'Page 1 (1-32)' => "OANDA:BTCUSD,OANDA:ETHUSD,OANDA:EURUSD,OANDA:GBPUSD,OANDA:EURGBP,OANDA:EURJPY,OANDA:GBPJPY,OANDA:EURCHF,OANDA:GBPCHF,OANDA:EURCAD,OANDA:GBPCAD,OANDA:EURAUD,OANDA:GBPAUD,OANDA:EURNZD,OANDA:GBPNZD,OANDA:USDCHF,OANDA:USDJPY,OANDA:USDCAD,OANDA:AUDUSD,OANDA:NZDUSD,OANDA:CADJPY,OANDA:CADCHF,OANDA:AUDCAD,OANDA:NZDCAD,OANDA:USDMXN,OANDA:USDZAR,OANDA:AUDJPY,OANDA:NZDJPY,OANDA:AUDNZD,OANDA:CHFJPY,OANDA:AUDCHF,OANDA:NZDCHF"
+        => ''
+
 effective_symbols = switch i_list_select
     'Nifty 50' => page_nifty50(i_page_nifty50)
     'Nifty Next 50' => page_niftynext50(i_page_niftynext50)
@@ -247,6 +253,7 @@ effective_symbols = switch i_list_select
     'Nifty Metal' => page_niftymetal(i_page_niftymetal)
     'Nifty Pharma' => page_niftypharma(i_page_niftypharma)
     'Nifty Realty' => page_niftyrealty(i_page_niftyrealty)
+    'Forex' => page_forex(i_page_forex)
     => i_symbols
 
 //_____________________________ Preset Index List Pages End
