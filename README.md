@@ -1,8 +1,22 @@
 # TradeKit
 
-TradeKit is an all-in-one Pine Script v6 indicator for TradingView that bundles the handful of overlays most discretionary traders reach for — moving averages, Bollinger Bands, session/reference levels, VWAP, and candle-pattern detection — into a single script with a consistent settings layout, so you don't have to stack five separate indicators (and five separate legends) on your chart.
+TradeKit is an all-in-one Pine Script v6 indicator for TradingView that bundles the handful of overlays most discretionary traders reach for — moving averages, Bollinger Bands, session/reference levels, VWAP, and candle-pattern detection — into a single script with a consistent settings layout, so you don't have to stack five separate indicators (and five separate legends) on your chart. The repo also includes a small family of standalone multi-symbol [screeners](#screeners) for scanning an entire index for the same patterns instead of checking one chart at a time.
 
 <!-- screenshot/GIF goes here -->
+
+## Table of Contents
+
+- [Why these features](#why-these-features)
+- [Session timezones, explained](#session-timezones-explained)
+  - [Session hours at a glance](#session-hours-at-a-glance)
+  - [Session notes](#session-notes)
+- [Getting started](#getting-started)
+- [Screeners](#screeners)
+  - [Symbol lists (`Symbols/`)](#symbol-lists-symbols)
+  - [A note on attribution](#a-note-on-attribution)
+- [License](#license)
+- [Disclaimer](#disclaimer)
+- [Suggested GitHub topics](#suggested-github-topics)
 
 ## Why these features
 
@@ -91,9 +105,29 @@ Notes are entirely local to your copy of the script (part of the indicator's sav
 5. Click the gear icon on the indicator's legend entry to open its settings, and toggle the features you want under the **Features** group.
 6. (Optional) To set up alerts, right-click the chart → **Add Alert**, choose **TradeKit** as the condition, and pick one of the specific conditions (e.g. "Inside Bar", "BB Upper Cross", "MA 1 / MA 2 Cross") from the dropdown.
 
+## Screeners
+
+Unlike `Tradekit.pine`, these don't overlay a chart — each renders a results table listing every symbol (from a whole index, if you like) currently matching its pattern, so you can scan a market in one shot instead of flipping through charts one at a time. Each lives in its own file under [`Screeners/`](./Screeners/) and is pasted into its own separate Pine Editor tab.
+
+- **[`C2C_Screener.pine`](./Screeners/C2C_Screener.pine)** — "Close-to-Close (C2C) Inside Bar Screener". Scans for the same pattern as TradeKit's **C2C Bar** feature above (an inside bar whose close continues in the direction of the prior candle) across a whole symbol list at once. Settings include how many candles back to look, a direction filter (Both/Bullish/Bearish), and the symbol list (see below).
+- **[`MSS_Screener.pine`](./Screeners/MSS_Screener.pine)** — "ICT Market Structure Shift (MSS) Screener". Scans for ICT (Inner Circle Trader) Market Structure Shift setups, or a retracement into the Optimal Trade Entry (OTE) zone / an order block following one — your choice via the Screening Method input — built on a ZigZag swing-point engine with configurable length, source, and displacement filter.
+- **[`Pre_2_Swing_Sweep.pine`](./Screeners/Pre_2_Swing_Sweep.pine)** — "ICT Liquidity Sweep Pattern Scanner". Scans for liquidity sweeps: price pushing through a prior ZigZag swing high/low and reversing back past it. The Screening Method input lets you check the 1st, 2nd (this file's default — hence the name), or 3rd previous swing point.
+
+All three share the same symbol-list mechanism: a **Preset Index List** dropdown with common Nifty indices (50/100/200/500, Bank, Auto, Pharma, etc.) already hardcoded in, paginated in 40-symbol pages since that's `request.security()`'s per-script limit, or a **Paste Symbols** text box if you'd rather scan a custom list (comma-separated, `EXCHANGE:SYMBOL` format, e.g. `NSE:RELIANCE, NSE:TCS`).
+
+**Using a screener:** open the Pine Editor, paste one of the three files above into a *new* tab (don't overwrite `Tradekit.pine`), click **Add to Chart** — since it renders a table rather than an overlay, it doesn't matter which symbol/chart you add it to. Then pick a Preset Index List (and page) or paste your own symbol list in its settings.
+
+### Symbol lists (`Symbols/`)
+
+[`Symbols/`](./Symbols/) holds plain-text, comma-delimited ticker lists for Nifty 50/100/200/500 and various sector indices, in the same `EXCHANGE:SYMBOL` format the screeners' Paste Symbols box expects. **There's no automatic link between these files and the screeners** — Pine Script runs on TradingView's servers and can't read files out of this repo, so nothing here happens automatically. They're a convenience reference: open the one you want, copy its contents, and paste it into a screener's symbol input (or into a TradingView watchlist). Since each screener already has its own hardcoded Preset Index List covering the same indices, you'll mostly only reach for these when you want a custom subset the presets don't cover.
+
+### A note on attribution
+
+`C2C_Screener.pine` is original work. `MSS_Screener.pine` and `Pre_2_Swing_Sweep.pine` are adapted from public scripts by TradingView user **Arun_K_Bhaskar**, published under MPL 2.0 — each file's header (`// © Arun_K_Bhaskar`) preserves that attribution, as MPL 2.0 requires.
+
 ## License
 
-TradeKit is released under the [Mozilla Public License 2.0](./LICENSE). MPL 2.0 was chosen in part because the Bollinger Bands and Sessions sections are adapted from TradingView's own built-in indicators of the same names, both published under the same license.
+TradeKit is released under the [Mozilla Public License 2.0](./LICENSE). MPL 2.0 was chosen in part because the Bollinger Bands and Sessions sections are adapted from TradingView's own built-in indicators of the same names, both published under the same license. The same license covers the [screeners](#screeners): see [the attribution note above](#a-note-on-attribution) for which are original and which are adapted from another author's published script.
 
 ## Disclaimer
 
@@ -101,4 +135,4 @@ TradeKit is provided for educational and informational purposes only. It is not 
 
 ## Suggested GitHub topics
 
-`tradingview` `pinescript` `pine-script` `technical-analysis` `algorithmic-trading` `trading-indicator` `trading-tools` `vwap` `bollinger-bands` `moving-average`
+`tradingview` `pinescript` `pine-script` `technical-analysis` `algorithmic-trading` `trading-indicator` `trading-tools` `vwap` `bollinger-bands` `moving-average` `stock-screener` `nifty`
