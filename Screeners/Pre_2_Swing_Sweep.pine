@@ -1,0 +1,891 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Arun_K_Bhaskar
+
+//@version=5
+indicator(title='ICT Liquidity Sweep Pattern Scanner', shorttitle='ICT LSP Scan', overlay=true, max_bars_back=500, max_lines_count=500, max_boxes_count=500)
+
+//_____________________________ Menu Screener Start
+
+g_scrtb = '█████████████████ Scanner █████████████████'
+
+string i_scr_choose = input.string(defval='Prev 2 Swing Sweep', title='Screening Method', options=['Prev 1 Swing Sweep', 'Prev 2 Swing Sweep', 'Prev 3 Swing Sweep'], group=g_scrtb)
+
+tt_is = "• Reads only up to first 40 symbols." +
+     "\n• Total characters cannot exceed 4096." +
+     "\n• Eg: EXCHANGE:SYMBOL_A,EXCHANGE:SYMBOL_B"
+
+string i_symbols = input.text_area(
+ defval="NSE:ABCAPITAL,NSE:BIOCON,NSE:BLS,NSE:BOMDYEING,NSE:CAPACITE,NSE:CESC,NSE:CHAMBLFERT,NSE:DCBBANK,NSE:ENGINERSIN,NSE:GIPCL,NSE:GMDCLTD,NSE:GSFC,NSE:HINDCOPPER,NSE:HINDOILEXP,NSE:INDIACEM,NSE:IOC,NSE:IRCON,NSE:IRFC,NSE:LTFOODS,NSE:MANAPPURAM,NSE:M_MFIN,NSE:NATIONALUM,NSE:NBCC,NSE:NFL,NSE:NLCINDIA,NSE:NMDC,NSE:PNB,NSE:PRAKASH,NSE:PTC,NSE:RAILTEL,NSE:RAIN,NSE:RBLBANK,NSE:RCF,NSE:RELINFRA,NSE:SAIL,NSE:SARDAEN,NSE:SJVN,NSE:TATASTEEL,NSE:TIMETECHNO,NSE:VEDL", 
+ title="Paste Symbols", tooltip=tt_is, group=g_scrtb)
+
+bool i_scr_show_table  = input.bool(defval=true, title='Display Table', group=g_scrtb)
+bool i_scr_show_long  = input.bool(defval=true, title='Long Signals', inline='tb_2', group=g_scrtb)
+bool i_scr_show_short  = input.bool(defval=true, title='Short Signals', inline='tb_2', group=g_scrtb)
+
+int i_scr_tbl_disp_rows = input.int(defval=12, title='Display Rows', minval=0, maxval=100, group=g_scrtb)
+string i_scr_tbl_position = input.string(defval=position.bottom_left, title='Table Position', options=[position.top_left, position.top_center, position.top_right, position.middle_left, position.middle_center, position.middle_right, position.bottom_left, position.bottom_center, position.bottom_right], group=g_scrtb)
+string i_scr_tbl_text_size = input.string(defval=size.small, title='Table Size', options=[size.auto, size.tiny, size.small, size.normal, size.large, size.huge], group=g_scrtb)
+
+//_____________________________ Menu Screener End
+
+//_____________________________ Menu Zig Zag Start 
+
+g_zz = '██████████████████ Zig Zag ██████████████████'
+
+bool i_zz_display = input.bool(defval=true, title='Display Zig Zag', group=g_zz)
+int i_zz_period = input.int(defval=4, title='Zig Zag Length', minval=2, group=g_zz)
+string i_zz_source = input.string(defval='High/Low', title='Source', options=['High/Low', 'Open/Close'], group=g_zz)
+color i_zz_bull_color = input.color(defval=#1E53E5, title='Color Up', group=g_zz)
+color i_zz_bear_color = input.color(defval=#1E53E5, title='Color Down', group=g_zz)
+string i_zz_ln_style = input.string(defval=line.style_solid, title="Line Style", options=[line.style_solid, line.style_dashed, line.style_dotted], group=g_zz)
+
+//_____________________________ Menu Zig Zag End 
+
+//_____________________________ Menu Table Start
+
+g_dtb = '█████████████████ Data Table █████████████████'
+bool i_tbl_data_show  = input.bool(defval=true, title='Display Table', group=g_dtb)
+string i_tbl_data_pos = input.string(defval=position.bottom_right, title='Position', options=[position.top_left, position.top_center, position.top_right, position.middle_left, position.middle_center, position.middle_right, position.bottom_left, position.bottom_center, position.bottom_right], group=g_dtb)
+string i_tbl_data_txt_size = input.string(defval=size.normal, title='Size', options=[size.auto, size.tiny, size.small, size.normal, size.large, size.huge], group=g_dtb)
+
+//_____________________________ Menu Table End
+
+//_____________________________ Chart Settings Start
+
+g_ch = '███████████████ Chart Settings ███████████████'
+color i_pos_dark_color = input.color(defval=#03110F, title='Positive Dark', group=g_ch)
+color i_pos_color = input.color(defval=#26A69A, title='Positive Mid', group=g_ch)
+color i_pos_light_color = input.color(defval=#ACE5DC, title='Positive Light', group=g_ch)
+color i_neg_light_color = input.color(defval=#FCCBCD, title='Negative Light', group=g_ch)
+color i_neg_color = input.color(defval=#FF5252, title='Negative Mid', group=g_ch)
+color i_neg_dark_color = input.color(defval=#180809, title='Negative Dark', group=g_ch)
+//color i_indicator_color = input.color(defval=#2962FF, title='Indicator', group=g_ch)
+//color i_signal_color = input.color(defval=#FF6D00, title='Signal', group=g_ch)
+color i_neu_color = input.color(defval=#D1D4DC, title='Neutral Light', group=g_ch)
+color i_neu_mid_color = input.color(defval=#2A2E39, title='Neutral Mid', group=g_ch)
+color i_neu_dark_color = input.color(defval=#141516, title='Neutral Dark', group=g_ch)
+
+//_____________________________ Chart Settings End
+
+//_____________________________ Cumulative Percentage Change Start
+
+// Function to calculate Daily Cumulative Percentage Change of Close Price
+cumulative_percentage_change() =>
+    var float _cum_pct_change = na
+    _is_new_day = ta.change(time('D')) != 0 ? 1 : 0
+    _daily_pct_change = na(close[1]) ? 0 : (close - close[1]) / close[1] * 100
+    _cum_pct_change := _is_new_day ? _daily_pct_change : (na(_cum_pct_change) ? _daily_pct_change : (_cum_pct_change + _daily_pct_change))
+    _cum_pct_change
+
+// Calculate current cumulative percentage change
+cum_pchg = cumulative_percentage_change()
+
+//_____________________________ Cumulative Percentage Change End
+
+//_____________________________ Cumulative Volume Percentage Change Start
+
+// Function to calculate Daily Cumulative Volume
+cumulative_volume() =>
+    var float _cum_vol = na
+    _is_new_day = ta.change(time('D')) != 0 ? 1 : 0
+    _cum_vol := _is_new_day ? volume : (na(_cum_vol) ? volume : (_cum_vol + volume))
+    _cum_vol
+
+// Calculate current and previous day cumulative volumes
+var float current_cum_vol = na
+var float prev_cum_vol = na
+
+if ta.change(time('D')) != 0
+    prev_cum_vol := current_cum_vol
+    current_cum_vol := volume
+else
+    current_cum_vol += volume
+
+// Calculate Cumulative Volume Percentage Change
+cum_vol_pchg = (current_cum_vol - nz(prev_cum_vol, current_cum_vol)) / nz(prev_cum_vol, current_cum_vol) * 100
+
+//_____________________________ Cumulative Volume Percentage Change End
+
+//_____________________________ Zig Zag Start 
+
+// Acknowledgement & Reference
+// Trader: 'RozaniGhani-RG'
+// Indicator Title: 'Zig Zag Ratio Simplified'
+// Indicator Link: 'https://www.tradingview.com/script/CIk186OY-Zig-Zag-Ratio-Simplified/'
+
+//_____________________________ Get Source
+
+float _high = i_zz_source == 'Open/Close' ? math.max(open, close) : high
+float _low = i_zz_source == 'Open/Close' ? math.min(open, close) : low
+
+//============================== 1.  Variables
+
+//_____________________________ 1.1 Highest / Lowest
+float ph = ta.highestbars(_high, i_zz_period) == 0 ? _high : na
+float pl = ta.lowestbars(_low, i_zz_period) == 0 ? _low  : na
+
+//_____________________________ 1.2 Dir
+var int dir = 0, dir := pl and na(ph) ? -1 : ph and na(pl) ? 1 : dir
+
+//_____________________________ 1.4 Array
+var max_array_size = 14, var zigzag = array.new_float(0), oldzigzag = array.copy(zigzag)
+
+//_____________________________ 1.5 Others
+var line line_zz = na
+
+//============================== 3.  Custom Functions
+
+add_to_zigzag(float[] pointer, float value, int bindex) =>
+    array.unshift(pointer, bindex)
+    array.unshift(pointer, value)
+    if array.size(pointer) > max_array_size
+        array.pop(pointer)
+        array.pop(pointer)
+    
+update_zigzag(float[] pointer, float value, int bindex, int dir) =>
+    if array.size(pointer) == 0
+        add_to_zigzag(pointer, value, bindex)
+    else
+        if dir == 1 and value > array.get(pointer, 0) or dir == -1 and value < array.get(pointer, 0)
+            array.set(pointer, 0, value)
+            array.set(pointer, 1, bindex)
+        0.
+
+//============================== 4.  Calculations
+
+dirchanged = ta.change(dir)
+
+if ph or pl
+    if dirchanged
+        add_to_zigzag(zigzag, dir == 1 ? ph : pl, bar_index)
+    else
+        update_zigzag(zigzag, dir == 1 ? ph : pl, bar_index, dir)
+
+//============================== 5.  Constructs
+
+if array.size(zigzag) >= 6
+    if array.get(zigzag, 0) != array.get(oldzigzag, 0) or array.get(zigzag, 1) != array.get(oldzigzag, 1)
+        if array.get(zigzag, 2) == array.get(oldzigzag, 2) and array.get(zigzag, 3) == array.get(oldzigzag, 3)
+            line.delete(line_zz)
+        if i_zz_display
+            line_zz := line.new(x1 = math.round(array.get(zigzag, 1)), y1 = array.get(zigzag, 0), x2 = math.round(array.get(zigzag, 3)), y2 = array.get(zigzag, 2), color = dir == 1 ? i_zz_bull_color : i_zz_bear_color, width=1)
+
+//_____________________________ Get Swing Price & Bar Index
+
+//zz_0 = array.size(zigzag) > 15 ? array.get(zigzag, array.size(zigzag) - 16) : na
+//bi_0 = array.size(zigzag) > 14 ? array.get(zigzag, array.size(zigzag) - 15) : na
+zz_1 = array.size(zigzag) > 13 ? array.get(zigzag, array.size(zigzag) - 14) : na
+//bi_1 = array.size(zigzag) > 12 ? array.get(zigzag, array.size(zigzag) - 13) : na
+zz_2 = array.size(zigzag) > 11 ? array.get(zigzag, array.size(zigzag) - 12) : na
+//bi_2 = array.size(zigzag) > 10 ? array.get(zigzag, array.size(zigzag) - 11) : na
+zz_3 = array.size(zigzag) > 9 ? array.get(zigzag, array.size(zigzag) - 10) : na
+bi_3 = array.size(zigzag) > 8 ? array.get(zigzag, array.size(zigzag) - 9) : na
+zz_4 = array.size(zigzag) > 7 ? array.get(zigzag, array.size(zigzag) - 8) : na
+//bi_4 = array.size(zigzag) > 6 ? array.get(zigzag, array.size(zigzag) - 7) : na
+zz_5 = array.size(zigzag) > 5 ? array.get(zigzag, array.size(zigzag) - 6) : na
+bi_5 = array.size(zigzag) > 4 ? array.get(zigzag, array.size(zigzag) - 5) : na
+zz_6 = array.size(zigzag) > 3 ? array.get(zigzag, array.size(zigzag) - 4) : na
+//bi_6 = array.size(zigzag) > 2 ? array.get(zigzag, array.size(zigzag) - 3) : na
+zz_7 = array.size(zigzag) > 1 ? array.get(zigzag, array.size(zigzag) - 2) : na
+bi_7 = array.size(zigzag) > 0 ? array.get(zigzag, array.size(zigzag) - 1) : na
+
+// Create a single label for the last five zigzag values and their corresponding bar index
+//label_text = str.tostring(zz_0) + "\n" + str.tostring(bi_0) + "\n" + str.tostring(zz_1) + "\n" + str.tostring(bi_1) + "\n" + str.tostring(zz_2) + 
+// "\n" + str.tostring(bi_2) + "\n" + str.tostring(zz_3) + "\n" + str.tostring(bi_3) + "\n" + str.tostring(zz_4) + "\n" + str.tostring(bi_4)
+//if barstate.islast
+//    label.new(x = bar_index, y = high, text = label_text, color=color.white)
+
+//_____________________________ Zig Zag End
+
+//_____________________________ Signals Start
+
+// Short Condition
+short_condition_1 = 
+ zz_2 < zz_3 and
+ zz_2 < zz_4 and
+ zz_2 < zz_6 and
+ zz_2 < zz_7 and
+
+ zz_3 < zz_5 and
+ zz_3 > zz_4 and
+ zz_3 > zz_2 and
+
+ zz_4 < zz_3 and
+ zz_4 < zz_5 and
+ zz_4 < zz_6 and
+ zz_4 < zz_7 and
+
+ zz_5 > zz_3 and
+ zz_5 > zz_4 and
+ zz_5 > zz_6 and
+ zz_5 < zz_7 and
+
+ zz_6 < zz_5 and
+ zz_6 < zz_7 and
+ zz_6 > zz_4 and
+
+ zz_7 > zz_2 and
+ zz_7 > zz_3 and
+ zz_7 > zz_4 and
+ zz_7 > zz_5 and
+ zz_7 > zz_6 and
+
+ ta.crossover(zz_1, zz_3) and
+
+ barstate.isconfirmed
+
+short_condition_2 = 
+ zz_2 < zz_3 and
+ zz_2 < zz_4 and
+ zz_2 < zz_6 and
+ zz_2 < zz_7 and
+
+ zz_3 < zz_5 and
+ zz_3 > zz_4 and
+ zz_3 > zz_2 and
+
+ zz_4 < zz_3 and
+ zz_4 < zz_5 and
+ zz_4 < zz_6 and
+ zz_4 < zz_7 and
+
+ zz_5 > zz_3 and
+ zz_5 > zz_4 and
+ zz_5 > zz_6 and
+ zz_5 < zz_7 and
+
+ zz_6 < zz_5 and
+ zz_6 < zz_7 and
+ zz_6 > zz_4 and
+
+ zz_7 > zz_2 and
+ zz_7 > zz_3 and
+ zz_7 > zz_4 and
+ zz_7 > zz_5 and
+ zz_7 > zz_6 and
+
+ ta.crossover(zz_1, zz_5) and
+
+ barstate.isconfirmed
+
+short_condition_3 = 
+ zz_2 < zz_3 and
+ zz_2 < zz_4 and
+ zz_2 < zz_6 and
+ zz_2 < zz_7 and
+
+ zz_3 < zz_5 and
+ zz_3 > zz_4 and
+ zz_3 > zz_2 and
+
+ zz_4 < zz_3 and
+ zz_4 < zz_5 and
+ zz_4 < zz_6 and
+ zz_4 < zz_7 and
+
+ zz_5 > zz_3 and
+ zz_5 > zz_4 and
+ zz_5 > zz_6 and
+ zz_5 < zz_7 and
+
+ zz_6 < zz_5 and
+ zz_6 < zz_7 and
+ zz_6 > zz_4 and
+
+ zz_7 > zz_2 and
+ zz_7 > zz_3 and
+ zz_7 > zz_4 and
+ zz_7 > zz_5 and
+ zz_7 > zz_6 and
+
+ ta.crossover(zz_1, zz_7) and
+
+ barstate.isconfirmed
+
+// Long Condition
+long_condition_1 = 
+ zz_2 < zz_3 and
+ zz_2 < zz_4 and
+ zz_2 < zz_6 and
+ zz_2 < zz_7 and
+
+ zz_3 < zz_5 and
+ zz_3 > zz_4 and
+ zz_3 > zz_2 and
+
+ zz_4 < zz_3 and
+ zz_4 < zz_5 and
+ zz_4 < zz_6 and
+ zz_4 < zz_7 and
+
+ zz_5 > zz_3 and
+ zz_5 > zz_4 and
+ zz_5 > zz_6 and
+ zz_5 < zz_7 and
+
+ zz_6 < zz_5 and
+ zz_6 < zz_7 and
+ zz_6 > zz_4 and
+
+ zz_7 > zz_2 and
+ zz_7 > zz_3 and
+ zz_7 > zz_4 and
+ zz_7 > zz_5 and
+ zz_7 > zz_6 and
+
+ ta.crossunder(zz_1, zz_3) and
+
+ barstate.isconfirmed
+
+long_condition_2 = 
+ zz_2 > zz_3 and
+ zz_2 > zz_4 and
+ zz_2 > zz_6 and
+ zz_2 > zz_7 and
+
+ zz_3 > zz_5 and
+ zz_3 < zz_4 and
+ zz_3 < zz_2 and
+
+ zz_4 > zz_3 and
+ zz_4 > zz_5 and
+ zz_4 > zz_6 and
+ zz_4 > zz_7 and
+
+ zz_5 < zz_3 and
+ zz_5 < zz_4 and
+ zz_5 < zz_6 and
+ zz_5 > zz_7 and
+
+ zz_6 > zz_5 and
+ zz_6 > zz_7 and
+ zz_6 < zz_4 and
+
+ zz_7 < zz_2 and
+ zz_7 < zz_3 and
+ zz_7 < zz_4 and
+ zz_7 < zz_5 and
+ zz_7 < zz_6 and
+
+ ta.crossunder(zz_1, zz_5) and
+
+ barstate.isconfirmed
+
+long_condition_3 = 
+ zz_2 > zz_3 and
+ zz_2 > zz_4 and
+ zz_2 > zz_6 and
+ zz_2 > zz_7 and
+
+ zz_3 > zz_5 and
+ zz_3 < zz_4 and
+ zz_3 < zz_2 and
+
+ zz_4 > zz_3 and
+ zz_4 > zz_5 and
+ zz_4 > zz_6 and
+ zz_4 > zz_7 and
+
+ zz_5 < zz_3 and
+ zz_5 < zz_4 and
+ zz_5 < zz_6 and
+ zz_5 > zz_7 and
+
+ zz_6 > zz_5 and
+ zz_6 > zz_7 and
+ zz_6 < zz_4 and
+
+ zz_7 < zz_2 and
+ zz_7 < zz_3 and
+ zz_7 < zz_4 and
+ zz_7 < zz_5 and
+ zz_7 < zz_6 and
+
+ ta.crossunder(zz_1, zz_7) and
+
+ barstate.isconfirmed
+
+// Plot Signals
+plotshape(series=i_scr_show_short and i_scr_choose == 'Prev 1 Swing Sweep' ? short_condition_1 : na, title='Prev 1 Bearish Sweep', style=shape.triangledown, location=location.abovebar, color=i_neg_light_color, size=size.tiny)
+plotshape(series=i_scr_show_long and i_scr_choose == 'Prev 1 Swing Sweep' ? long_condition_1 : na, title='Prev 1 Bullish Sweep', style=shape.triangleup, location=location.belowbar, color=i_pos_light_color, size=size.tiny)
+barcolor(color=i_scr_show_short and i_scr_choose == 'Prev 1 Swing Sweep' and short_condition_1 ? i_neg_light_color : i_scr_show_long and i_scr_choose == 'Prev 1 Swing Sweep' and long_condition_1 ? i_pos_light_color : na, title='Prev 1 Candle')
+
+plotshape(series=i_scr_show_short and i_scr_choose == 'Prev 2 Swing Sweep' ? short_condition_2 : na, title='Prev 2 Bearish Sweep', style=shape.triangledown, location=location.abovebar, color=i_neg_light_color, size=size.tiny)
+plotshape(series=i_scr_show_long and i_scr_choose == 'Prev 2 Swing Sweep' ? long_condition_2 : na, title='Prev 2 Bullish Sweep', style=shape.triangleup, location=location.belowbar, color=i_pos_light_color, size=size.tiny)
+barcolor(color=i_scr_show_short and i_scr_choose == 'Prev 2 Swing Sweep' and short_condition_2 ? i_neg_light_color : i_scr_show_long and i_scr_choose == 'Prev 2 Swing Sweep' and long_condition_2 ? i_pos_light_color : na, title='Prev 2 Candle')
+
+plotshape(series=i_scr_show_short and i_scr_choose == 'Prev 3 Swing Sweep' ? short_condition_3 : na, title='Prev 3 Bearish Sweep', style=shape.triangledown, location=location.abovebar, color=i_neg_light_color, size=size.tiny)
+plotshape(series=i_scr_show_long and i_scr_choose == 'Prev 3 Swing Sweep' ? long_condition_3 : na, title='Prev 3 Bullish Sweep', style=shape.triangleup, location=location.belowbar, color=i_pos_light_color, size=size.tiny)
+barcolor(color=i_scr_show_short and i_scr_choose == 'Prev 3 Swing Sweep' and short_condition_3 ? i_neg_light_color : i_scr_show_long and i_scr_choose == 'Prev 3 Swing Sweep' and long_condition_3 ? i_pos_light_color : na, title='Prev 3 Candle')
+
+//
+var line_array = array.new_line()
+// 1
+if i_scr_show_short and i_scr_choose == 'Prev 1 Swing Sweep' and short_condition_1
+    ph_line = line.new(x1=int(bi_3), y1=zz_3, x2=bar_index, y2=zz_3, color=i_neg_color, style=i_zz_ln_style)
+    array.push(line_array, ph_line)
+
+if i_scr_show_long and i_scr_choose == 'Prev 1 Swing Sweep' and long_condition_1
+    pl_line = line.new(x1=int(bi_3), y1=zz_3, x2=bar_index, y2=zz_3, color=i_pos_color, style=i_zz_ln_style)
+    array.push(line_array, pl_line)
+
+// 2
+if i_scr_show_short and i_scr_choose == 'Prev 2 Swing Sweep' and short_condition_2
+    ph_line = line.new(x1=int(bi_5), y1=zz_5, x2=bar_index, y2=zz_5, color=i_neg_color, style=i_zz_ln_style)
+    array.push(line_array, ph_line)
+
+if i_scr_show_long and i_scr_choose == 'Prev 2 Swing Sweep' and long_condition_2
+    pl_line = line.new(x1=int(bi_5), y1=zz_5, x2=bar_index, y2=zz_5, color=i_pos_color, style=i_zz_ln_style)
+    array.push(line_array, pl_line)
+
+// 3
+if i_scr_show_short and i_scr_choose == 'Prev 3 Swing Sweep' and short_condition_3
+    ph_line = line.new(x1=int(bi_7), y1=zz_7, x2=bar_index, y2=zz_7, color=i_neg_color, style=i_zz_ln_style)
+    array.push(line_array, ph_line)
+
+if i_scr_show_long and i_scr_choose == 'Prev 3 Swing Sweep' and long_condition_3
+    pl_line = line.new(x1=int(bi_7), y1=zz_7, x2=bar_index, y2=zz_7, color=i_pos_color, style=i_zz_ln_style)
+    array.push(line_array, pl_line)
+
+//_____________________________ Signals End
+
+//_____________________________ Data Table Start
+
+// To String
+day_pchg_str = str.tostring(cum_pchg,"#.##") + ' %'
+volume_pchg_str = str.tostring(cum_vol_pchg,"#.##") + ' %'
+day_volume_str = str.tostring(current_cum_vol/100000,"#.##") + ' L'
+prev_day_volume_str = str.tostring(prev_cum_vol/100000,"#.##") + ' L'
+
+// Color
+bgcolor_1 = i_neu_dark_color
+bgcolor_2 = i_neu_mid_color
+
+pchg_col = cum_pchg > 0 ? i_pos_color : i_neg_color
+vol_pchg_col = cum_vol_pchg > 0 ? i_pos_color : i_neg_color
+prev_vol_pchg_col = prev_cum_vol < current_cum_vol ? i_neg_color : i_pos_color
+
+// Plot Table
+var table tbl_data = table.new(position=i_tbl_data_pos, columns=2, rows=4, border_width=1, force_overlay=true)
+
+if barstate.islast and i_tbl_data_show
+    table.cell(table_id=tbl_data, column=0, row=0, text="%Chg", text_color=i_neu_color, text_halign=text.align_left, bgcolor=bgcolor_1, text_size=i_tbl_data_txt_size)
+    table.cell(table_id=tbl_data, column=1, row=0, text=day_pchg_str, text_color=pchg_col, text_halign=text.align_right, bgcolor=bgcolor_1, text_size=i_tbl_data_txt_size)
+
+    table.cell(table_id=tbl_data, column=0, row=1, text="Vol %Chg", text_color=i_neu_color, text_halign=text.align_left, bgcolor=bgcolor_2, text_size=i_tbl_data_txt_size)
+    table.cell(table_id=tbl_data, column=1, row=1, text=volume_pchg_str, text_color=vol_pchg_col, text_halign=text.align_right, bgcolor=bgcolor_2, text_size=i_tbl_data_txt_size)
+
+    table.cell(table_id=tbl_data, column=0, row=2, text="Vol", text_color=i_neu_color, text_halign=text.align_left, bgcolor=bgcolor_1, text_size=i_tbl_data_txt_size)
+    table.cell(table_id=tbl_data, column=1, row=2, text=day_volume_str, text_color=vol_pchg_col, text_halign=text.align_right, bgcolor=bgcolor_1, text_size=i_tbl_data_txt_size)
+
+    table.cell(table_id=tbl_data, column=0, row=3, text="PD Vol", text_color=i_neu_color, text_halign=text.align_left, bgcolor=bgcolor_2, text_size=i_tbl_data_txt_size)
+    table.cell(table_id=tbl_data, column=1, row=3, text=prev_day_volume_str, text_color=prev_vol_pchg_col, text_halign=text.align_right, bgcolor=bgcolor_2, text_size=i_tbl_data_txt_size)
+
+//_____________________________ Data Table End
+
+//_____________________________ Menu Index Reference Lists Start
+
+// Selecting a list below scans ONLY that list's chosen page (max 40 symbols
+// per request.security()'s hard call limit) and ignores the Notes input
+// above entirely. Only one list can be active at a time — hover the ⓘ icon
+// on the dropdown for details. Leave on 'None (use Notes)' to scan Notes.
+
+g_lists = 'Preset Index Lists'
+
+tt_list_select = "Selecting a list here scans ONLY that list's chosen Page below, and ignores the Notes symbols above entirely." + "\n• request.security() allows at most 40 calls per script, so each list is pre-split into 40-symbol pages." + "\n• Pick the matching '<List Name> — Page' dropdown for whichever list you choose here." + "\n• Set this back to 'None (use Notes)' to scan your own pasted Notes symbols again."
+
+string i_list_select = input.string(defval='None (use Notes)', title='Preset Index List', options=['None (use Notes)', 'Nifty 50', 'Nifty Next 50', 'Nifty 100', 'Nifty 200', 'Nifty 500', 'Nifty LargeMidcap 250', 'Nifty Midcap 50', 'Nifty Midcap 100', 'Nifty Midcap 150', 'Nifty Smallcap 50', 'Nifty Smallcap 100', 'Nifty Smallcap 250', 'Nifty Microcap 250', 'Nifty Bank', 'Nifty Private Bank', 'Nifty PSU Bank', 'Nifty Auto', 'Nifty Finance', 'Nifty FMCG', 'Nifty Metal', 'Nifty Pharma', 'Nifty Realty'], tooltip=tt_list_select, group=g_lists)
+
+string i_page_nifty50 = input.string(defval='Page 1 (1-40)', title='Nifty 50 — Page', options=['Page 1 (1-40)', 'Page 2 (41-50)'], group=g_lists)
+string i_page_niftynext50 = input.string(defval='Page 1 (1-40)', title='Nifty Next 50 — Page', options=['Page 1 (1-40)', 'Page 2 (41-50)'], group=g_lists)
+string i_page_nifty100 = input.string(defval='Page 1 (1-40)', title='Nifty 100 — Page', options=['Page 1 (1-40)', 'Page 2 (41-80)', 'Page 3 (81-100)'], group=g_lists)
+string i_page_nifty200 = input.string(defval='Page 1 (1-40)', title='Nifty 200 — Page', options=['Page 1 (1-40)', 'Page 2 (41-80)', 'Page 3 (81-120)', 'Page 4 (121-160)', 'Page 5 (161-200)'], group=g_lists)
+string i_page_nifty500 = input.string(defval='Page 1 (1-40)', title='Nifty 500 — Page', options=['Page 1 (1-40)', 'Page 2 (41-80)', 'Page 3 (81-120)', 'Page 4 (121-160)', 'Page 5 (161-200)', 'Page 6 (201-240)', 'Page 7 (241-280)', 'Page 8 (281-320)', 'Page 9 (321-360)', 'Page 10 (361-400)', 'Page 11 (401-440)', 'Page 12 (441-480)', 'Page 13 (481-500)'], group=g_lists)
+string i_page_niftylargemidcap250 = input.string(defval='Page 1 (1-40)', title='Nifty LargeMidcap 250 — Page', options=['Page 1 (1-40)', 'Page 2 (41-80)', 'Page 3 (81-120)', 'Page 4 (121-160)', 'Page 5 (161-200)', 'Page 6 (201-240)', 'Page 7 (241-250)'], group=g_lists)
+string i_page_niftymidcap50 = input.string(defval='Page 1 (1-40)', title='Nifty Midcap 50 — Page', options=['Page 1 (1-40)', 'Page 2 (41-50)'], group=g_lists)
+string i_page_niftymidcap100 = input.string(defval='Page 1 (1-40)', title='Nifty Midcap 100 — Page', options=['Page 1 (1-40)', 'Page 2 (41-80)', 'Page 3 (81-100)'], group=g_lists)
+string i_page_niftymidcap150 = input.string(defval='Page 1 (1-40)', title='Nifty Midcap 150 — Page', options=['Page 1 (1-40)', 'Page 2 (41-80)', 'Page 3 (81-120)', 'Page 4 (121-150)'], group=g_lists)
+string i_page_niftysmallcap50 = input.string(defval='Page 1 (1-40)', title='Nifty Smallcap 50 — Page', options=['Page 1 (1-40)', 'Page 2 (41-50)'], group=g_lists)
+string i_page_niftysmallcap100 = input.string(defval='Page 1 (1-40)', title='Nifty Smallcap 100 — Page', options=['Page 1 (1-40)', 'Page 2 (41-80)', 'Page 3 (81-100)'], group=g_lists)
+string i_page_niftysmallcap250 = input.string(defval='Page 1 (1-40)', title='Nifty Smallcap 250 — Page', options=['Page 1 (1-40)', 'Page 2 (41-80)', 'Page 3 (81-120)', 'Page 4 (121-160)', 'Page 5 (161-200)', 'Page 6 (201-240)', 'Page 7 (241-250)'], group=g_lists)
+string i_page_niftymicrocap250 = input.string(defval='Page 1 (1-40)', title='Nifty Microcap 250 — Page', options=['Page 1 (1-40)', 'Page 2 (41-80)', 'Page 3 (81-120)', 'Page 4 (121-160)', 'Page 5 (161-200)', 'Page 6 (201-240)', 'Page 7 (241-251)'], group=g_lists)
+string i_page_niftybank = input.string(defval='Page 1 (1-14)', title='Nifty Bank — Page', options=['Page 1 (1-14)'], group=g_lists)
+string i_page_niftyprivatebank = input.string(defval='Page 1 (1-10)', title='Nifty Private Bank — Page', options=['Page 1 (1-10)'], group=g_lists)
+string i_page_niftypsubank = input.string(defval='Page 1 (1-12)', title='Nifty PSU Bank — Page', options=['Page 1 (1-12)'], group=g_lists)
+string i_page_niftyauto = input.string(defval='Page 1 (1-15)', title='Nifty Auto — Page', options=['Page 1 (1-15)'], group=g_lists)
+string i_page_niftyfinance = input.string(defval='Page 1 (1-20)', title='Nifty Finance — Page', options=['Page 1 (1-20)'], group=g_lists)
+string i_page_niftyfmcg = input.string(defval='Page 1 (1-15)', title='Nifty FMCG — Page', options=['Page 1 (1-15)'], group=g_lists)
+string i_page_niftymetal = input.string(defval='Page 1 (1-15)', title='Nifty Metal — Page', options=['Page 1 (1-15)'], group=g_lists)
+string i_page_niftypharma = input.string(defval='Page 1 (1-20)', title='Nifty Pharma — Page', options=['Page 1 (1-20)'], group=g_lists)
+string i_page_niftyrealty = input.string(defval='Page 1 (1-10)', title='Nifty Realty — Page', options=['Page 1 (1-10)'], group=g_lists)
+
+//_____________________________ Menu Index Reference Lists End
+
+//_____________________________ Preset Index List Pages Start
+
+page_nifty50(sel) =>
+    switch sel
+        'Page 1 (1-40)' => "NSE:ADANIENT,NSE:ADANIPORTS,NSE:APOLLOHOSP,NSE:ASIANPAINT,NSE:AXISBANK,NSE:BAJAJ-AUTO,NSE:BAJFINANCE,NSE:BAJAJFINSV,NSE:BEL,NSE:BHARTIARTL,NSE:CIPLA,NSE:COALINDIA,NSE:DRREDDY,NSE:EICHERMOT,NSE:ETERNAL,NSE:GRASIM,NSE:HCLTECH,NSE:HDFCBANK,NSE:HDFCLIFE,NSE:HINDALCO,NSE:HINDUNILVR,NSE:ICICIBANK,NSE:ITC,NSE:INFY,NSE:INDIGO,NSE:JSWSTEEL,NSE:JIOFIN,NSE:KOTAKBANK,NSE:LT,NSE:M&M,NSE:MARUTI,NSE:MAXHEALTH,NSE:NTPC,NSE:NESTLEIND,NSE:ONGC,NSE:POWERGRID,NSE:RELIANCE,NSE:SBILIFE,NSE:SHRIRAMFIN,NSE:SBIN"
+        'Page 2 (41-50)' => "NSE:SUNPHARMA,NSE:TCS,NSE:TATACONSUM,NSE:TMPV,NSE:TATASTEEL,NSE:TECHM,NSE:TITAN,NSE:TRENT,NSE:ULTRACEMCO,NSE:WIPRO"
+        => ''
+
+page_niftynext50(sel) =>
+    switch sel
+        'Page 1 (1-40)' => "NSE:ABB,NSE:ADANIENSOL,NSE:ADANIGREEN,NSE:ADANIPOWER,NSE:AMBUJACEM,NSE:DMART,NSE:BAJAJHLDNG,NSE:BANKBARODA,NSE:BPCL,NSE:BOSCHLTD,NSE:BRITANNIA,NSE:CGPOWER,NSE:CANBK,NSE:CHOLAFIN,NSE:CUMMINSIND,NSE:DLF,NSE:DIVISLAB,NSE:GAIL,NSE:GODREJCP,NSE:HDFCAMC,NSE:HAL,NSE:HINDZINC,NSE:HYUNDAI,NSE:INDHOTEL,NSE:IOC,NSE:IRFC,NSE:JINDALSTEL,NSE:LTM,NSE:LODHA,NSE:MAZDOCK,NSE:MUTHOOTFIN,NSE:PIDILITIND,NSE:PFC,NSE:PNB,NSE:RECLTD,NSE:MOTHERSON,NSE:SHREECEM,NSE:ENRIN,NSE:SIEMENS,NSE:SOLARINDS"
+        'Page 2 (41-50)' => "NSE:TVSMOTOR,NSE:TATACAP,NSE:TMCV,NSE:TATAPOWER,NSE:TORNTPHARM,NSE:UNIONBANK,NSE:UNITDSPR,NSE:VBL,NSE:VEDL,NSE:ZYDUSLIFE"
+        => ''
+
+page_nifty100(sel) =>
+    switch sel
+        'Page 1 (1-40)' => "NSE:ABB,NSE:ADANIENSOL,NSE:ADANIENT,NSE:ADANIGREEN,NSE:ADANIPORTS,NSE:ADANIPOWER,NSE:AMBUJACEM,NSE:APOLLOHOSP,NSE:ASIANPAINT,NSE:DMART,NSE:AXISBANK,NSE:BAJAJ-AUTO,NSE:BAJFINANCE,NSE:BAJAJFINSV,NSE:BAJAJHLDNG,NSE:BANKBARODA,NSE:BEL,NSE:BPCL,NSE:BHARTIARTL,NSE:BOSCHLTD,NSE:BRITANNIA,NSE:CGPOWER,NSE:CANBK,NSE:CHOLAFIN,NSE:CIPLA,NSE:COALINDIA,NSE:CUMMINSIND,NSE:DLF,NSE:DIVISLAB,NSE:DRREDDY,NSE:EICHERMOT,NSE:ETERNAL,NSE:GAIL,NSE:GODREJCP,NSE:GRASIM,NSE:HCLTECH,NSE:HDFCAMC,NSE:HDFCBANK,NSE:HDFCLIFE,NSE:HINDALCO"
+        'Page 2 (41-80)' => "NSE:HAL,NSE:HINDUNILVR,NSE:HINDZINC,NSE:HYUNDAI,NSE:ICICIBANK,NSE:ITC,NSE:INDHOTEL,NSE:IOC,NSE:IRFC,NSE:INFY,NSE:INDIGO,NSE:JSWSTEEL,NSE:JINDALSTEL,NSE:JIOFIN,NSE:KOTAKBANK,NSE:LTM,NSE:LT,NSE:LODHA,NSE:M&M,NSE:MARUTI,NSE:MAXHEALTH,NSE:MAZDOCK,NSE:MUTHOOTFIN,NSE:NTPC,NSE:NESTLEIND,NSE:ONGC,NSE:PIDILITIND,NSE:PFC,NSE:POWERGRID,NSE:PNB,NSE:RECLTD,NSE:RELIANCE,NSE:SBILIFE,NSE:MOTHERSON,NSE:SHREECEM,NSE:SHRIRAMFIN,NSE:ENRIN,NSE:SIEMENS,NSE:SOLARINDS,NSE:SBIN"
+        'Page 3 (81-100)' => "NSE:SUNPHARMA,NSE:TVSMOTOR,NSE:TATACAP,NSE:TCS,NSE:TATACONSUM,NSE:TMCV,NSE:TMPV,NSE:TATAPOWER,NSE:TATASTEEL,NSE:TECHM,NSE:TITAN,NSE:TORNTPHARM,NSE:TRENT,NSE:ULTRACEMCO,NSE:UNIONBANK,NSE:UNITDSPR,NSE:VBL,NSE:VEDL,NSE:WIPRO,NSE:ZYDUSLIFE"
+        => ''
+
+page_nifty200(sel) =>
+    switch sel
+        'Page 1 (1-40)' => "NSE:360ONE,NSE:ABB,NSE:APLAPOLLO,NSE:AUBANK,NSE:ADANIENSOL,NSE:ADANIENT,NSE:ADANIGREEN,NSE:ADANIPORTS,NSE:ADANIPOWER,NSE:ATGL,NSE:ABCAPITAL,NSE:ALKEM,NSE:AMBUJACEM,NSE:APOLLOHOSP,NSE:ASHOKLEY,NSE:ASIANPAINT,NSE:ASTRAL,NSE:AUROPHARMA,NSE:DMART,NSE:AXISBANK,NSE:BSE,NSE:BAJAJ-AUTO,NSE:BAJFINANCE,NSE:BAJAJFINSV,NSE:BAJAJHLDNG,NSE:BANKBARODA,NSE:BANKINDIA,NSE:BDL,NSE:BEL,NSE:BHARATFORG,NSE:BHEL,NSE:BPCL,NSE:BHARTIARTL,NSE:GROWW,NSE:BIOCON,NSE:BLUESTARCO,NSE:BOSCHLTD,NSE:BRITANNIA,NSE:CGPOWER,NSE:CANBK"
+        'Page 2 (41-80)' => "NSE:CHOLAFIN,NSE:CIPLA,NSE:COALINDIA,NSE:COCHINSHIP,NSE:COFORGE,NSE:COLPAL,NSE:CONCOR,NSE:COROMANDEL,NSE:CUMMINSIND,NSE:DLF,NSE:DABUR,NSE:DIVISLAB,NSE:DIXON,NSE:DRREDDY,NSE:EICHERMOT,NSE:ETERNAL,NSE:EXIDEIND,NSE:NYKAA,NSE:FEDERALBNK,NSE:FORTIS,NSE:GAIL,NSE:GVT&D,NSE:GMRAIRPORT,NSE:GLENMARK,NSE:GODFRYPHLP,NSE:GODREJCP,NSE:GODREJPROP,NSE:GRASIM,NSE:HCLTECH,NSE:HDFCAMC,NSE:HDFCBANK,NSE:HDFCLIFE,NSE:HAVELLS,NSE:HEROMOTOCO,NSE:HINDALCO,NSE:HAL,NSE:HINDPETRO,NSE:HINDUNILVR,NSE:HINDZINC,NSE:POWERINDIA"
+        'Page 3 (81-120)' => "NSE:HUDCO,NSE:HYUNDAI,NSE:ICICIBANK,NSE:ICICIGI,NSE:ICICIAMC,NSE:IDFCFIRSTB,NSE:ITC,NSE:INDIANB,NSE:INDHOTEL,NSE:IOC,NSE:IRCTC,NSE:IRFC,NSE:IREDA,NSE:INDUSTOWER,NSE:INDUSINDBK,NSE:NAUKRI,NSE:INFY,NSE:INDIGO,NSE:JSWENERGY,NSE:JSWSTEEL,NSE:JINDALSTEL,NSE:JIOFIN,NSE:JUBLFOOD,NSE:KEI,NSE:KPITTECH,NSE:KALYANKJIL,NSE:KOTAKBANK,NSE:LTF,NSE:LGEINDIA,NSE:LICHSGFIN,NSE:LTM,NSE:LT,NSE:LAURUSLABS,NSE:LENSKART,NSE:LODHA,NSE:LUPIN,NSE:MRF,NSE:M&MFIN,NSE:M&M,NSE:MANKIND"
+        'Page 4 (121-160)' => "NSE:MARICO,NSE:MARUTI,NSE:MFSL,NSE:MAXHEALTH,NSE:MAZDOCK,NSE:MOTILALOFS,NSE:MPHASIS,NSE:MCX,NSE:MUTHOOTFIN,NSE:NHPC,NSE:NMDC,NSE:NTPC,NSE:NATIONALUM,NSE:NESTLEIND,NSE:OBEROIRLTY,NSE:ONGC,NSE:OIL,NSE:PAYTM,NSE:OFSS,NSE:POLICYBZR,NSE:PIIND,NSE:PAGEIND,NSE:PATANJALI,NSE:PERSISTENT,NSE:PHOENIXLTD,NSE:PIDILITIND,NSE:POLYCAB,NSE:PFC,NSE:POWERGRID,NSE:PREMIERENE,NSE:PRESTIGE,NSE:PNB,NSE:RECLTD,NSE:RADICO,NSE:RVNL,NSE:RELIANCE,NSE:SBICARD,NSE:SBILIFE,NSE:SRF,NSE:MOTHERSON"
+        'Page 5 (161-200)' => "NSE:SHREECEM,NSE:SHRIRAMFIN,NSE:ENRIN,NSE:SIEMENS,NSE:SOLARINDS,NSE:SBIN,NSE:SAIL,NSE:SUNPHARMA,NSE:SUPREMEIND,NSE:SUZLON,NSE:SWIGGY,NSE:TVSMOTOR,NSE:TATACAP,NSE:TATACOMM,NSE:TCS,NSE:TATACONSUM,NSE:TATAELXSI,NSE:TATAINVEST,NSE:TMCV,NSE:TMPV,NSE:TATAPOWER,NSE:TATASTEEL,NSE:TECHM,NSE:TITAN,NSE:TORNTPHARM,NSE:TRENT,NSE:TIINDIA,NSE:UPL,NSE:ULTRACEMCO,NSE:UNIONBANK,NSE:UNITDSPR,NSE:VBL,NSE:VEDL,NSE:VMM,NSE:IDEA,NSE:VOLTAS,NSE:WAAREEENER,NSE:WIPRO,NSE:YESBANK,NSE:ZYDUSLIFE"
+        => ''
+
+page_nifty500(sel) =>
+    switch sel
+        'Page 1 (1-40)' => "NSE:360ONE,NSE:3MINDIA,NSE:ABB,NSE:ACC,NSE:ACMESOLAR,NSE:AIAENG,NSE:APLAPOLLO,NSE:AUBANK,NSE:AWL,NSE:AADHARHFC,NSE:AARTIIND,NSE:AAVAS,NSE:ABBOTINDIA,NSE:ACE,NSE:ACUTAAS,NSE:ADANIENSOL,NSE:ADANIENT,NSE:ADANIGREEN,NSE:ADANIPORTS,NSE:ADANIPOWER,NSE:ATGL,NSE:ABCAPITAL,NSE:ABFRL,NSE:ABLBL,NSE:ABREL,NSE:ABSLAMC,NSE:CPPLUS,NSE:AEGISLOG,NSE:AEGISVOPAK,NSE:AFCONS,NSE:AFFLE,NSE:AJANTPHARM,NSE:ALKEM,NSE:ABDL,NSE:ARE&M,NSE:AMBER,NSE:AMBUJACEM,NSE:ANANDRATHI,NSE:ANANTRAJ,NSE:ANGELONE"
+        'Page 2 (41-80)' => "NSE:ANTHEM,NSE:ANURAS,NSE:APARINDS,NSE:APOLLOHOSP,NSE:APOLLOTYRE,NSE:APTUS,NSE:ASAHIINDIA,NSE:ASHOKLEY,NSE:ASIANPAINT,NSE:ASTERDM,NSE:ASTRAL,NSE:ATHERENERG,NSE:ATUL,NSE:AUROPHARMA,NSE:AIIL,NSE:DMART,NSE:AXISBANK,NSE:BEML,NSE:BLS,NSE:BSE,NSE:BAJAJ-AUTO,NSE:BAJFINANCE,NSE:BAJAJFINSV,NSE:BAJAJHLDNG,NSE:BAJAJHFL,NSE:BALKRISIND,NSE:BALRAMCHIN,NSE:BANDHANBNK,NSE:BANKBARODA,NSE:BANKINDIA,NSE:MAHABANK,NSE:BATAINDIA,NSE:BAYERCROP,NSE:BELRISE,NSE:BERGEPAINT,NSE:BDL,NSE:BEL,NSE:BHARATFORG,NSE:BHEL,NSE:BPCL"
+        'Page 3 (81-120)' => "NSE:BHARTIARTL,NSE:BHARTIHEXA,NSE:BIKAJI,NSE:GROWW,NSE:BIOCON,NSE:BSOFT,NSE:BLUEDART,NSE:BLUEJET,NSE:BLUESTARCO,NSE:BBTC,NSE:BOSCHLTD,NSE:FIRSTCRY,NSE:BRIGADE,NSE:BRITANNIA,NSE:MAPMYINDIA,NSE:CCL,NSE:CESC,NSE:CGPOWER,NSE:CIEINDIA,NSE:CRISIL,NSE:CANFINHOME,NSE:CANBK,NSE:CANHLIFE,NSE:CAPLIPOINT,NSE:CGCL,NSE:CARBORUNIV,NSE:CARTRADE,NSE:CASTROLIND,NSE:CEATLTD,NSE:CEMPRO,NSE:CENTRALBK,NSE:CDSL,NSE:CHALET,NSE:CHAMBLFERT,NSE:CHENNPETRO,NSE:CHOICEIN,NSE:CHOLAHLDNG,NSE:CHOLAFIN,NSE:CIPLA,NSE:CUB"
+        'Page 4 (121-160)' => "NSE:CLEAN,NSE:COALINDIA,NSE:COCHINSHIP,NSE:COFORGE,NSE:COHANCE,NSE:COLPAL,NSE:CAMS,NSE:CONCORDBIO,NSE:CONCOR,NSE:COROMANDEL,NSE:CRAFTSMAN,NSE:CREDITACC,NSE:CROMPTON,NSE:CUMMINSIND,NSE:CYIENT,NSE:DCMSHRIRAM,NSE:DLF,NSE:DOMS,NSE:DABUR,NSE:DALBHARAT,NSE:DATAPATTNS,NSE:DEEPAKFERT,NSE:DEEPAKNTR,NSE:DELHIVERY,NSE:DEVYANI,NSE:DIVISLAB,NSE:DIXON,NSE:LALPATHLAB,NSE:DRREDDY,NSE:EIDPARRY,NSE:EIHOTEL,NSE:EICHERMOT,NSE:ELECON,NSE:ELGIEQUIP,NSE:EMAMILTD,NSE:EMCURE,NSE:EMMVEE,NSE:ENDURANCE,NSE:ENGINERSIN,NSE:ERIS"
+        'Page 5 (161-200)' => "NSE:ESCORTS,NSE:ETERNAL,NSE:EXIDEIND,NSE:NYKAA,NSE:FEDERALBNK,NSE:FACT,NSE:FINCABLES,NSE:FSL,NSE:FIVESTAR,NSE:FORCEMOT,NSE:FORTIS,NSE:GAIL,NSE:GVT&D,NSE:GMRAIRPORT,NSE:GABRIEL,NSE:GALLANTT,NSE:GRSE,NSE:GICRE,NSE:GILLETTE,NSE:GLAND,NSE:GLAXO,NSE:GLENMARK,NSE:MEDANTA,NSE:GODIGIT,NSE:GPIL,NSE:GODFRYPHLP,NSE:GODREJCP,NSE:GODREJIND,NSE:GODREJPROP,NSE:GRANULES,NSE:GRAPHITE,NSE:GRASIM,NSE:GRAVITA,NSE:GESHIP,NSE:FLUOROCHEM,NSE:GMDCLTD,NSE:HEG,NSE:HBLENGINE,NSE:HCLTECH,NSE:HDBFS"
+        'Page 6 (201-240)' => "NSE:HDFCAMC,NSE:HDFCBANK,NSE:HDFCLIFE,NSE:HFCL,NSE:HAVELLS,NSE:HEROMOTOCO,NSE:HEXT,NSE:HSCL,NSE:HINDALCO,NSE:HAL,NSE:HINDCOPPER,NSE:HINDPETRO,NSE:HINDUNILVR,NSE:HINDZINC,NSE:POWERINDIA,NSE:HOMEFIRST,NSE:HONASA,NSE:HONAUT,NSE:HUDCO,NSE:HYUNDAI,NSE:ICICIBANK,NSE:ICICIGI,NSE:ICICIAMC,NSE:ICICIPRULI,NSE:IDBI,NSE:IDFCFIRSTB,NSE:IFCI,NSE:IIFL,NSE:IRB,NSE:IRCON,NSE:ITCHOTELS,NSE:ITC,NSE:ITI,NSE:INDGN,NSE:INDIACEM,NSE:INDIAMART,NSE:INDIANB,NSE:IEX,NSE:INDHOTEL,NSE:IOC"
+        'Page 7 (241-280)' => "NSE:IOB,NSE:IRCTC,NSE:IRFC,NSE:IREDA,NSE:IGL,NSE:INDUSTOWER,NSE:INDUSINDBK,NSE:NAUKRI,NSE:INFY,NSE:INOXWIND,NSE:INTELLECT,NSE:INDIGO,NSE:IGIL,NSE:IKS,NSE:IPCALAB,NSE:JKCEMENT,NSE:JBMA,NSE:JKTYRE,NSE:JMFINANCIL,NSE:JSWCEMENT,NSE:JSWDULUX,NSE:JSWENERGY,NSE:JSWINFRA,NSE:JSWSTEEL,NSE:JAINREC,NSE:JPPOWER,NSE:J&KBANK,NSE:JINDALSAW,NSE:JSL,NSE:JINDALSTEL,NSE:JIOFIN,NSE:JUBLFOOD,NSE:JUBLINGREA,NSE:JUBLPHARMA,NSE:JWL,NSE:JYOTICNC,NSE:KPRMILL,NSE:KEI,NSE:KPITTECH,NSE:KAJARIACER"
+        'Page 8 (281-320)' => "NSE:KPIL,NSE:KALYANKJIL,NSE:KARURVYSYA,NSE:KAYNES,NSE:KEC,NSE:KFINTECH,NSE:KIRLOSENG,NSE:KOTAKBANK,NSE:KIMS,NSE:LTF,NSE:LTTS,NSE:LGEINDIA,NSE:LICHSGFIN,NSE:LTFOODS,NSE:LTM,NSE:LT,NSE:LATENTVIEW,NSE:LAURUSLABS,NSE:THELEELA,NSE:LEMONTREE,NSE:LENSKART,NSE:LICI,NSE:LINDEINDIA,NSE:LLOYDSME,NSE:LODHA,NSE:LUPIN,NSE:MMTC,NSE:MRF,NSE:MGL,NSE:M&MFIN,NSE:M&M,NSE:MANAPPURAM,NSE:MRPL,NSE:MANKIND,NSE:MARICO,NSE:MARUTI,NSE:MFSL,NSE:MAXHEALTH,NSE:MAZDOCK,NSE:MEESHO"
+        'Page 9 (321-360)' => "NSE:MINDACORP,NSE:MSUMI,NSE:MOTILALOFS,NSE:MPHASIS,NSE:MCX,NSE:MUTHOOTFIN,NSE:NATCOPHARM,NSE:NBCC,NSE:NCC,NSE:NHPC,NSE:NLCINDIA,NSE:NMDC,NSE:NSLNISP,NSE:NTPCGREEN,NSE:NTPC,NSE:NH,NSE:NATIONALUM,NSE:NAVA,NSE:NAVINFLUOR,NSE:NESTLEIND,NSE:NETWEB,NSE:NEULANDLAB,NSE:NEWGEN,NSE:NAM-INDIA,NSE:NIVABUPA,NSE:NUVAMA,NSE:NUVOCO,NSE:OBEROIRLTY,NSE:ONGC,NSE:OIL,NSE:OLAELEC,NSE:OLECTRA,NSE:PAYTM,NSE:ONESOURCE,NSE:OFSS,NSE:POLICYBZR,NSE:PCBL,NSE:PGEL,NSE:PIIND,NSE:PNBHOUSING"
+        'Page 10 (361-400)' => "NSE:PTCIL,NSE:PVRINOX,NSE:PAGEIND,NSE:PARADEEP,NSE:PATANJALI,NSE:PERSISTENT,NSE:PETRONET,NSE:PFIZER,NSE:PHOENIXLTD,NSE:PWL,NSE:PIDILITIND,NSE:PINELABS,NSE:PIRAMALFIN,NSE:PPLPHARMA,NSE:POLYMED,NSE:POLYCAB,NSE:POONAWALLA,NSE:PFC,NSE:POWERGRID,NSE:PREMIERENE,NSE:PRESTIGE,NSE:PFOCUS,NSE:PNB,NSE:RRKABEL,NSE:RBLBANK,NSE:RECLTD,NSE:RHIM,NSE:RITES,NSE:RADICO,NSE:RVNL,NSE:RAILTEL,NSE:RAINBOW,NSE:RKFORGE,NSE:REDINGTON,NSE:RELIANCE,NSE:RPOWER,NSE:SBFC,NSE:SBICARD,NSE:SBILIFE,NSE:SJVN"
+        'Page 11 (401-440)' => "NSE:SRF,NSE:SAGILITY,NSE:SAILIFE,NSE:SAMMAANCAP,NSE:MOTHERSON,NSE:SAPPHIRE,NSE:SARDAEN,NSE:SAREGAMA,NSE:SCHAEFFLER,NSE:SCHNEIDER,NSE:SCI,NSE:SHREECEM,NSE:SHRIRAMFIN,NSE:SHYAMMETL,NSE:ENRIN,NSE:SIEMENS,NSE:SIGNATURE,NSE:SOBHA,NSE:SOLARINDS,NSE:SONACOMS,NSE:SONATSOFTW,NSE:STARHEALTH,NSE:SBIN,NSE:SAIL,NSE:SUMICHEM,NSE:SUNPHARMA,NSE:SUNTV,NSE:SUNDARMFIN,NSE:SUPREMEIND,NSE:SPLPETRO,NSE:SUZLON,NSE:SWANCORP,NSE:SWIGGY,NSE:SYNGENE,NSE:SYRMA,NSE:TBOTEK,NSE:TVSMOTOR,NSE:TATACAP,NSE:TATACHEM,NSE:TATACOMM"
+        'Page 12 (441-480)' => "NSE:TCS,NSE:TATACONSUM,NSE:TATAELXSI,NSE:TATAINVEST,NSE:TMCV,NSE:TMPV,NSE:TATAPOWER,NSE:TATASTEEL,NSE:TATATECH,NSE:TTML,NSE:TECHM,NSE:TECHNOE,NSE:TEGA,NSE:TEJASNET,NSE:TENNIND,NSE:NIACL,NSE:RAMCOCEM,NSE:THERMAX,NSE:TIMKEN,NSE:TITAGARH,NSE:TITAN,NSE:TORNTPHARM,NSE:TORNTPOWER,NSE:TARIL,NSE:TRAVELFOOD,NSE:TRENT,NSE:TRIDENT,NSE:TRITURBINE,NSE:TIINDIA,NSE:UCOBANK,NSE:UNOMINDA,NSE:UPL,NSE:UTIAMC,NSE:ULTRACEMCO,NSE:UNIONBANK,NSE:UBL,NSE:UNITDSPR,NSE:URBANCO,NSE:USHAMART,NSE:VTL"
+        'Page 13 (481-500)' => "NSE:VBL,NSE:VEDL,NSE:VIJAYA,NSE:VMM,NSE:IDEA,NSE:VOLTAS,NSE:WAAREEENER,NSE:WELCORP,NSE:WELSPUNLIV,NSE:WHIRLPOOL,NSE:WIPRO,NSE:WOCKPHARMA,NSE:YESBANK,NSE:ZFCVINDIA,NSE:ZEEL,NSE:ZENTEC,NSE:ZENSARTECH,NSE:ZYDUSLIFE,NSE:ZYDUSWELL,NSE:ECLERX"
+        => ''
+
+page_niftylargemidcap250(sel) =>
+    switch sel
+        'Page 1 (1-40)' => "NSE:360ONE,NSE:3MINDIA,NSE:ABB,NSE:ACC,NSE:AIAENG,NSE:APLAPOLLO,NSE:AUBANK,NSE:AWL,NSE:ABBOTINDIA,NSE:ADANIENSOL,NSE:ADANIENT,NSE:ADANIGREEN,NSE:ADANIPORTS,NSE:ADANIPOWER,NSE:ATGL,NSE:ABCAPITAL,NSE:AJANTPHARM,NSE:ALKEM,NSE:AMBUJACEM,NSE:ANTHEM,NSE:APARINDS,NSE:APOLLOHOSP,NSE:APOLLOTYRE,NSE:ASHOKLEY,NSE:ASIANPAINT,NSE:ASTRAL,NSE:AUROPHARMA,NSE:AIIL,NSE:DMART,NSE:AXISBANK,NSE:BSE,NSE:BAJAJ-AUTO,NSE:BAJFINANCE,NSE:BAJAJFINSV,NSE:BAJAJHLDNG,NSE:BAJAJHFL,NSE:BALKRISIND,NSE:BANKBARODA,NSE:BANKINDIA,NSE:MAHABANK"
+        'Page 2 (41-80)' => "NSE:BERGEPAINT,NSE:BDL,NSE:BEL,NSE:BHARATFORG,NSE:BHEL,NSE:BPCL,NSE:BHARTIARTL,NSE:BHARTIHEXA,NSE:GROWW,NSE:BIOCON,NSE:BLUESTARCO,NSE:BOSCHLTD,NSE:BRITANNIA,NSE:CGPOWER,NSE:CRISIL,NSE:CANBK,NSE:CHOLAFIN,NSE:CIPLA,NSE:COALINDIA,NSE:COCHINSHIP,NSE:COFORGE,NSE:COLPAL,NSE:CONCOR,NSE:COROMANDEL,NSE:CUMMINSIND,NSE:DLF,NSE:DABUR,NSE:DALBHARAT,NSE:DIVISLAB,NSE:DIXON,NSE:DRREDDY,NSE:EICHERMOT,NSE:ENDURANCE,NSE:ESCORTS,NSE:ETERNAL,NSE:EXIDEIND,NSE:NYKAA,NSE:FEDERALBNK,NSE:FORTIS,NSE:GAIL"
+        'Page 3 (81-120)' => "NSE:GVT&D,NSE:GMRAIRPORT,NSE:GICRE,NSE:GLAXO,NSE:GLENMARK,NSE:MEDANTA,NSE:GODFRYPHLP,NSE:GODREJCP,NSE:GODREJIND,NSE:GODREJPROP,NSE:GRASIM,NSE:FLUOROCHEM,NSE:HCLTECH,NSE:HDBFS,NSE:HDFCAMC,NSE:HDFCBANK,NSE:HDFCLIFE,NSE:HAVELLS,NSE:HEROMOTOCO,NSE:HEXT,NSE:HINDALCO,NSE:HAL,NSE:HINDPETRO,NSE:HINDUNILVR,NSE:HINDZINC,NSE:POWERINDIA,NSE:HONAUT,NSE:HUDCO,NSE:HYUNDAI,NSE:ICICIBANK,NSE:ICICIGI,NSE:ICICIAMC,NSE:ICICIPRULI,NSE:IDFCFIRSTB,NSE:ITCHOTELS,NSE:ITC,NSE:INDIANB,NSE:INDHOTEL,NSE:IOC,NSE:IRCTC"
+        'Page 4 (121-160)' => "NSE:IRFC,NSE:IREDA,NSE:INDUSTOWER,NSE:INDUSINDBK,NSE:NAUKRI,NSE:INFY,NSE:INDIGO,NSE:IPCALAB,NSE:JKCEMENT,NSE:JSWENERGY,NSE:JSWINFRA,NSE:JSWSTEEL,NSE:JSL,NSE:JINDALSTEL,NSE:JIOFIN,NSE:JUBLFOOD,NSE:KPRMILL,NSE:KEI,NSE:KPITTECH,NSE:KALYANKJIL,NSE:KOTAKBANK,NSE:LTF,NSE:LTTS,NSE:LGEINDIA,NSE:LICHSGFIN,NSE:LTM,NSE:LT,NSE:LAURUSLABS,NSE:LENSKART,NSE:LICI,NSE:LINDEINDIA,NSE:LLOYDSME,NSE:LODHA,NSE:LUPIN,NSE:MRF,NSE:M&MFIN,NSE:M&M,NSE:MANKIND,NSE:MARICO,NSE:MARUTI"
+        'Page 5 (161-200)' => "NSE:MFSL,NSE:MAXHEALTH,NSE:MAZDOCK,NSE:MOTILALOFS,NSE:MPHASIS,NSE:MCX,NSE:MUTHOOTFIN,NSE:NHPC,NSE:NLCINDIA,NSE:NMDC,NSE:NTPCGREEN,NSE:NTPC,NSE:NATIONALUM,NSE:NESTLEIND,NSE:NAM-INDIA,NSE:OBEROIRLTY,NSE:ONGC,NSE:OIL,NSE:PAYTM,NSE:OFSS,NSE:POLICYBZR,NSE:PIIND,NSE:PAGEIND,NSE:PATANJALI,NSE:PERSISTENT,NSE:PETRONET,NSE:PHOENIXLTD,NSE:PIDILITIND,NSE:POLYCAB,NSE:PFC,NSE:POWERGRID,NSE:PREMIERENE,NSE:PRESTIGE,NSE:PNB,NSE:RECLTD,NSE:RADICO,NSE:RVNL,NSE:RELIANCE,NSE:SBICARD,NSE:SBILIFE"
+        'Page 6 (201-240)' => "NSE:SJVN,NSE:SRF,NSE:MOTHERSON,NSE:SCHAEFFLER,NSE:SHREECEM,NSE:SHRIRAMFIN,NSE:ENRIN,NSE:SIEMENS,NSE:SOLARINDS,NSE:SBIN,NSE:SAIL,NSE:SUNPHARMA,NSE:SUNDARMFIN,NSE:SUPREMEIND,NSE:SUZLON,NSE:SWIGGY,NSE:TVSMOTOR,NSE:TATACAP,NSE:TATACOMM,NSE:TCS,NSE:TATACONSUM,NSE:TATAELXSI,NSE:TATAINVEST,NSE:TMCV,NSE:TMPV,NSE:TATAPOWER,NSE:TATASTEEL,NSE:TECHM,NSE:NIACL,NSE:THERMAX,NSE:TITAN,NSE:TORNTPHARM,NSE:TORNTPOWER,NSE:TRENT,NSE:TIINDIA,NSE:UNOMINDA,NSE:UPL,NSE:ULTRACEMCO,NSE:UNIONBANK,NSE:UBL"
+        'Page 7 (241-250)' => "NSE:UNITDSPR,NSE:VBL,NSE:VEDL,NSE:VMM,NSE:IDEA,NSE:VOLTAS,NSE:WAAREEENER,NSE:WIPRO,NSE:YESBANK,NSE:ZYDUSLIFE"
+        => ''
+
+page_niftymidcap50(sel) =>
+    switch sel
+        'Page 1 (1-40)' => "NSE:APLAPOLLO,NSE:AUBANK,NSE:ALKEM,NSE:ASHOKLEY,NSE:AUROPHARMA,NSE:BSE,NSE:BHARATFORG,NSE:BHEL,NSE:COFORGE,NSE:COLPAL,NSE:DABUR,NSE:DIXON,NSE:NYKAA,NSE:FEDERALBNK,NSE:FORTIS,NSE:GMRAIRPORT,NSE:GODREJPROP,NSE:HAVELLS,NSE:HEROMOTOCO,NSE:HINDPETRO,NSE:ICICIGI,NSE:IDFCFIRSTB,NSE:INDUSTOWER,NSE:INDUSINDBK,NSE:NAUKRI,NSE:LAURUSLABS,NSE:LUPIN,NSE:MANKIND,NSE:MARICO,NSE:MFSL,NSE:MPHASIS,NSE:MCX,NSE:NHPC,NSE:NMDC,NSE:OIL,NSE:PAYTM,NSE:POLICYBZR,NSE:PERSISTENT,NSE:PHOENIXLTD,NSE:POLYCAB"
+        'Page 2 (41-50)' => "NSE:PRESTIGE,NSE:SBICARD,NSE:SRF,NSE:SUPREMEIND,NSE:SUZLON,NSE:SWIGGY,NSE:TIINDIA,NSE:UPL,NSE:WAAREEENER,NSE:YESBANK"
+        => ''
+
+page_niftymidcap100(sel) =>
+    switch sel
+        'Page 1 (1-40)' => "NSE:360ONE,NSE:APLAPOLLO,NSE:AUBANK,NSE:ATGL,NSE:ABCAPITAL,NSE:ALKEM,NSE:ASHOKLEY,NSE:ASTRAL,NSE:AUROPHARMA,NSE:BSE,NSE:BANKINDIA,NSE:BDL,NSE:BHARATFORG,NSE:BHEL,NSE:GROWW,NSE:BIOCON,NSE:BLUESTARCO,NSE:COCHINSHIP,NSE:COFORGE,NSE:COLPAL,NSE:CONCOR,NSE:COROMANDEL,NSE:DABUR,NSE:DIXON,NSE:EXIDEIND,NSE:NYKAA,NSE:FEDERALBNK,NSE:FORTIS,NSE:GVT&D,NSE:GMRAIRPORT,NSE:GLENMARK,NSE:GODFRYPHLP,NSE:GODREJPROP,NSE:HAVELLS,NSE:HEROMOTOCO,NSE:HINDPETRO,NSE:POWERINDIA,NSE:HUDCO,NSE:ICICIGI,NSE:ICICIAMC"
+        'Page 2 (41-80)' => "NSE:IDFCFIRSTB,NSE:INDIANB,NSE:IRCTC,NSE:IREDA,NSE:INDUSTOWER,NSE:INDUSINDBK,NSE:NAUKRI,NSE:JSWENERGY,NSE:JUBLFOOD,NSE:KEI,NSE:KPITTECH,NSE:KALYANKJIL,NSE:LTF,NSE:LGEINDIA,NSE:LICHSGFIN,NSE:LAURUSLABS,NSE:LENSKART,NSE:LUPIN,NSE:MRF,NSE:M&MFIN,NSE:MANKIND,NSE:MARICO,NSE:MFSL,NSE:MOTILALOFS,NSE:MPHASIS,NSE:MCX,NSE:NHPC,NSE:NMDC,NSE:NATIONALUM,NSE:OBEROIRLTY,NSE:OIL,NSE:PAYTM,NSE:OFSS,NSE:POLICYBZR,NSE:PIIND,NSE:PAGEIND,NSE:PATANJALI,NSE:PERSISTENT,NSE:PHOENIXLTD,NSE:POLYCAB"
+        'Page 3 (81-100)' => "NSE:PREMIERENE,NSE:PRESTIGE,NSE:RADICO,NSE:RVNL,NSE:SBICARD,NSE:SRF,NSE:SAIL,NSE:SUPREMEIND,NSE:SUZLON,NSE:SWIGGY,NSE:TATACOMM,NSE:TATAELXSI,NSE:TATAINVEST,NSE:TIINDIA,NSE:UPL,NSE:VMM,NSE:IDEA,NSE:VOLTAS,NSE:WAAREEENER,NSE:YESBANK"
+        => ''
+
+page_niftymidcap150(sel) =>
+    switch sel
+        'Page 1 (1-40)' => "NSE:360ONE,NSE:3MINDIA,NSE:ACC,NSE:AIAENG,NSE:APLAPOLLO,NSE:AUBANK,NSE:AWL,NSE:ABBOTINDIA,NSE:ATGL,NSE:ABCAPITAL,NSE:AJANTPHARM,NSE:ALKEM,NSE:ANTHEM,NSE:APARINDS,NSE:APOLLOTYRE,NSE:ASHOKLEY,NSE:ASTRAL,NSE:AUROPHARMA,NSE:AIIL,NSE:BSE,NSE:BAJAJHFL,NSE:BALKRISIND,NSE:BANKINDIA,NSE:MAHABANK,NSE:BERGEPAINT,NSE:BDL,NSE:BHARATFORG,NSE:BHEL,NSE:BHARTIHEXA,NSE:GROWW,NSE:BIOCON,NSE:BLUESTARCO,NSE:CRISIL,NSE:COCHINSHIP,NSE:COFORGE,NSE:COLPAL,NSE:CONCOR,NSE:COROMANDEL,NSE:DABUR,NSE:DALBHARAT"
+        'Page 2 (41-80)' => "NSE:DIXON,NSE:ENDURANCE,NSE:ESCORTS,NSE:EXIDEIND,NSE:NYKAA,NSE:FEDERALBNK,NSE:FORTIS,NSE:GVT&D,NSE:GMRAIRPORT,NSE:GICRE,NSE:GLAXO,NSE:GLENMARK,NSE:MEDANTA,NSE:GODFRYPHLP,NSE:GODREJIND,NSE:GODREJPROP,NSE:FLUOROCHEM,NSE:HDBFS,NSE:HAVELLS,NSE:HEROMOTOCO,NSE:HEXT,NSE:HINDPETRO,NSE:POWERINDIA,NSE:HONAUT,NSE:HUDCO,NSE:ICICIGI,NSE:ICICIAMC,NSE:ICICIPRULI,NSE:IDFCFIRSTB,NSE:ITCHOTELS,NSE:INDIANB,NSE:IRCTC,NSE:IREDA,NSE:INDUSTOWER,NSE:INDUSINDBK,NSE:NAUKRI,NSE:IPCALAB,NSE:JKCEMENT,NSE:JSWENERGY,NSE:JSWINFRA"
+        'Page 3 (81-120)' => "NSE:JSL,NSE:JUBLFOOD,NSE:KPRMILL,NSE:KEI,NSE:KPITTECH,NSE:KALYANKJIL,NSE:LTF,NSE:LTTS,NSE:LGEINDIA,NSE:LICHSGFIN,NSE:LAURUSLABS,NSE:LENSKART,NSE:LICI,NSE:LINDEINDIA,NSE:LLOYDSME,NSE:LUPIN,NSE:MRF,NSE:M&MFIN,NSE:MANKIND,NSE:MARICO,NSE:MFSL,NSE:MOTILALOFS,NSE:MPHASIS,NSE:MCX,NSE:NHPC,NSE:NLCINDIA,NSE:NMDC,NSE:NTPCGREEN,NSE:NATIONALUM,NSE:NAM-INDIA,NSE:OBEROIRLTY,NSE:OIL,NSE:PAYTM,NSE:OFSS,NSE:POLICYBZR,NSE:PIIND,NSE:PAGEIND,NSE:PATANJALI,NSE:PERSISTENT,NSE:PETRONET"
+        'Page 4 (121-150)' => "NSE:PHOENIXLTD,NSE:POLYCAB,NSE:PREMIERENE,NSE:PRESTIGE,NSE:RADICO,NSE:RVNL,NSE:SBICARD,NSE:SJVN,NSE:SRF,NSE:SCHAEFFLER,NSE:SAIL,NSE:SUNDARMFIN,NSE:SUPREMEIND,NSE:SUZLON,NSE:SWIGGY,NSE:TATACOMM,NSE:TATAELXSI,NSE:TATAINVEST,NSE:NIACL,NSE:THERMAX,NSE:TORNTPOWER,NSE:TIINDIA,NSE:UNOMINDA,NSE:UPL,NSE:UBL,NSE:VMM,NSE:IDEA,NSE:VOLTAS,NSE:WAAREEENER,NSE:YESBANK"
+        => ''
+
+page_niftysmallcap50(sel) =>
+    switch sel
+        'Page 1 (1-40)' => "NSE:AEGISLOG,NSE:AFFLE,NSE:ARE&M,NSE:AMBER,NSE:ANANDRATHI,NSE:ANGELONE,NSE:ASTERDM,NSE:BANDHANBNK,NSE:CESC,NSE:CASTROLIND,NSE:CDSL,NSE:CHOLAHLDNG,NSE:CUB,NSE:COHANCE,NSE:CAMS,NSE:CROMPTON,NSE:DELHIVERY,NSE:LALPATHLAB,NSE:FIVESTAR,NSE:GLAND,NSE:HSCL,NSE:HINDCOPPER,NSE:IIFL,NSE:IGL,NSE:INOXWIND,NSE:KARURVYSYA,NSE:KAYNES,NSE:KEC,NSE:KFINTECH,NSE:MANAPPURAM,NSE:NATCOPHARM,NSE:NBCC,NSE:NH,NSE:NAVINFLUOR,NSE:NEULANDLAB,NSE:PGEL,NSE:PNBHOUSING,NSE:PIRAMALFIN,NSE:PPLPHARMA,NSE:POONAWALLA"
+        'Page 2 (41-50)' => "NSE:RBLBANK,NSE:REDINGTON,NSE:RPOWER,NSE:SAILIFE,NSE:SONACOMS,NSE:SYNGENE,NSE:TATACHEM,NSE:TATATECH,NSE:WELCORP,NSE:WOCKPHARMA"
+        => ''
+
+page_niftysmallcap100(sel) =>
+    switch sel
+        'Page 1 (1-40)' => "NSE:AARTIIND,NSE:ABREL,NSE:AEGISLOG,NSE:AFCONS,NSE:AFFLE,NSE:ARE&M,NSE:AMBER,NSE:ANANDRATHI,NSE:ANANTRAJ,NSE:ANGELONE,NSE:APTUS,NSE:ASTERDM,NSE:ATHERENERG,NSE:BEML,NSE:BLS,NSE:BANDHANBNK,NSE:FIRSTCRY,NSE:BRIGADE,NSE:CESC,NSE:CGCL,NSE:CASTROLIND,NSE:CDSL,NSE:CHAMBLFERT,NSE:CHOLAHLDNG,NSE:CUB,NSE:COHANCE,NSE:CAMS,NSE:CREDITACC,NSE:CROMPTON,NSE:DATAPATTNS,NSE:DEEPAKFERT,NSE:DELHIVERY,NSE:DEVYANI,NSE:LALPATHLAB,NSE:FSL,NSE:FIVESTAR,NSE:FORCEMOT,NSE:GRSE,NSE:GLAND,NSE:GPIL"
+        'Page 2 (41-80)' => "NSE:GESHIP,NSE:GMDCLTD,NSE:HBLENGINE,NSE:HSCL,NSE:HINDCOPPER,NSE:IDBI,NSE:IFCI,NSE:IIFL,NSE:IRCON,NSE:ITI,NSE:IGL,NSE:INOXWIND,NSE:IKS,NSE:JBMA,NSE:JMFINANCIL,NSE:JSWCEMENT,NSE:JYOTICNC,NSE:KARURVYSYA,NSE:KAYNES,NSE:KEC,NSE:KFINTECH,NSE:MANAPPURAM,NSE:MRPL,NSE:MEESHO,NSE:NATCOPHARM,NSE:NBCC,NSE:NH,NSE:NAVINFLUOR,NSE:NETWEB,NSE:NEULANDLAB,NSE:NUVAMA,NSE:OLAELEC,NSE:PGEL,NSE:PNBHOUSING,NSE:PWL,NSE:PINELABS,NSE:PIRAMALFIN,NSE:PPLPHARMA,NSE:POONAWALLA,NSE:RBLBANK"
+        'Page 3 (81-100)' => "NSE:REDINGTON,NSE:RPOWER,NSE:SAGILITY,NSE:SAILIFE,NSE:SARDAEN,NSE:SIGNATURE,NSE:SONACOMS,NSE:STARHEALTH,NSE:SWANCORP,NSE:SYNGENE,NSE:TATACHEM,NSE:TATATECH,NSE:TENNIND,NSE:RAMCOCEM,NSE:TRITURBINE,NSE:URBANCO,NSE:WELCORP,NSE:WHIRLPOOL,NSE:WOCKPHARMA,NSE:ZENSARTECH"
+        => ''
+
+page_niftysmallcap250(sel) =>
+    switch sel
+        'Page 1 (1-40)' => "NSE:ACMESOLAR,NSE:AADHARHFC,NSE:AARTIIND,NSE:AAVAS,NSE:ACE,NSE:ACUTAAS,NSE:ABFRL,NSE:ABLBL,NSE:ABREL,NSE:ABSLAMC,NSE:CPPLUS,NSE:AEGISLOG,NSE:AEGISVOPAK,NSE:AFCONS,NSE:AFFLE,NSE:ABDL,NSE:ARE&M,NSE:AMBER,NSE:ANANDRATHI,NSE:ANANTRAJ,NSE:ANGELONE,NSE:ANURAS,NSE:APTUS,NSE:ASAHIINDIA,NSE:ASTERDM,NSE:ATHERENERG,NSE:ATUL,NSE:BEML,NSE:BLS,NSE:BALRAMCHIN,NSE:BANDHANBNK,NSE:BATAINDIA,NSE:BAYERCROP,NSE:BELRISE,NSE:BIKAJI,NSE:BSOFT,NSE:BLUEDART,NSE:BLUEJET,NSE:BBTC,NSE:FIRSTCRY"
+        'Page 2 (41-80)' => "NSE:BRIGADE,NSE:MAPMYINDIA,NSE:CCL,NSE:CESC,NSE:CIEINDIA,NSE:CANFINHOME,NSE:CANHLIFE,NSE:CAPLIPOINT,NSE:CGCL,NSE:CARBORUNIV,NSE:CARTRADE,NSE:CASTROLIND,NSE:CEATLTD,NSE:CEMPRO,NSE:CENTRALBK,NSE:CDSL,NSE:CHALET,NSE:CHAMBLFERT,NSE:CHENNPETRO,NSE:CHOICEIN,NSE:CHOLAHLDNG,NSE:CUB,NSE:CLEAN,NSE:COHANCE,NSE:CAMS,NSE:CONCORDBIO,NSE:CRAFTSMAN,NSE:CREDITACC,NSE:CROMPTON,NSE:CYIENT,NSE:DCMSHRIRAM,NSE:DOMS,NSE:DATAPATTNS,NSE:DEEPAKFERT,NSE:DEEPAKNTR,NSE:DELHIVERY,NSE:DEVYANI,NSE:LALPATHLAB,NSE:EIDPARRY,NSE:EIHOTEL"
+        'Page 3 (81-120)' => "NSE:ELECON,NSE:ELGIEQUIP,NSE:EMAMILTD,NSE:EMCURE,NSE:EMMVEE,NSE:ENGINERSIN,NSE:ERIS,NSE:FACT,NSE:FINCABLES,NSE:FSL,NSE:FIVESTAR,NSE:FORCEMOT,NSE:GABRIEL,NSE:GALLANTT,NSE:GRSE,NSE:GILLETTE,NSE:GLAND,NSE:GODIGIT,NSE:GPIL,NSE:GRANULES,NSE:GRAPHITE,NSE:GRAVITA,NSE:GESHIP,NSE:GMDCLTD,NSE:HEG,NSE:HBLENGINE,NSE:HFCL,NSE:HSCL,NSE:HINDCOPPER,NSE:HOMEFIRST,NSE:HONASA,NSE:IDBI,NSE:IFCI,NSE:IIFL,NSE:IRB,NSE:IRCON,NSE:ITI,NSE:INDGN,NSE:INDIACEM,NSE:INDIAMART"
+        'Page 4 (121-160)' => "NSE:IEX,NSE:IOB,NSE:IGL,NSE:INOXWIND,NSE:INTELLECT,NSE:IGIL,NSE:IKS,NSE:JBMA,NSE:JKTYRE,NSE:JMFINANCIL,NSE:JSWCEMENT,NSE:JSWDULUX,NSE:JAINREC,NSE:JPPOWER,NSE:J&KBANK,NSE:JINDALSAW,NSE:JUBLINGREA,NSE:JUBLPHARMA,NSE:JWL,NSE:JYOTICNC,NSE:KAJARIACER,NSE:KPIL,NSE:KARURVYSYA,NSE:KAYNES,NSE:KEC,NSE:KFINTECH,NSE:KIRLOSENG,NSE:KIMS,NSE:LTFOODS,NSE:LATENTVIEW,NSE:THELEELA,NSE:LEMONTREE,NSE:MMTC,NSE:MGL,NSE:MANAPPURAM,NSE:MRPL,NSE:MEESHO,NSE:MINDACORP,NSE:MSUMI,NSE:NATCOPHARM"
+        'Page 5 (161-200)' => "NSE:NBCC,NSE:NCC,NSE:NSLNISP,NSE:NH,NSE:NAVA,NSE:NAVINFLUOR,NSE:NETWEB,NSE:NEULANDLAB,NSE:NEWGEN,NSE:NIVABUPA,NSE:NUVAMA,NSE:NUVOCO,NSE:OLAELEC,NSE:OLECTRA,NSE:ONESOURCE,NSE:PCBL,NSE:PGEL,NSE:PNBHOUSING,NSE:PTCIL,NSE:PVRINOX,NSE:PARADEEP,NSE:PFIZER,NSE:PWL,NSE:PINELABS,NSE:PIRAMALFIN,NSE:PPLPHARMA,NSE:POLYMED,NSE:POONAWALLA,NSE:PFOCUS,NSE:RRKABEL,NSE:RBLBANK,NSE:RHIM,NSE:RITES,NSE:RAILTEL,NSE:RAINBOW,NSE:RKFORGE,NSE:REDINGTON,NSE:RPOWER,NSE:SBFC,NSE:SAGILITY"
+        'Page 6 (201-240)' => "NSE:SAILIFE,NSE:SAMMAANCAP,NSE:SAPPHIRE,NSE:SARDAEN,NSE:SAREGAMA,NSE:SCHNEIDER,NSE:SCI,NSE:SHYAMMETL,NSE:SIGNATURE,NSE:SOBHA,NSE:SONACOMS,NSE:SONATSOFTW,NSE:STARHEALTH,NSE:SUMICHEM,NSE:SUNTV,NSE:SPLPETRO,NSE:SWANCORP,NSE:SYNGENE,NSE:SYRMA,NSE:TBOTEK,NSE:TATACHEM,NSE:TATATECH,NSE:TTML,NSE:TECHNOE,NSE:TEGA,NSE:TEJASNET,NSE:TENNIND,NSE:RAMCOCEM,NSE:TIMKEN,NSE:TITAGARH,NSE:TARIL,NSE:TRAVELFOOD,NSE:TRIDENT,NSE:TRITURBINE,NSE:UCOBANK,NSE:UTIAMC,NSE:URBANCO,NSE:USHAMART,NSE:VTL,NSE:VIJAYA"
+        'Page 7 (241-250)' => "NSE:WELCORP,NSE:WELSPUNLIV,NSE:WHIRLPOOL,NSE:WOCKPHARMA,NSE:ZFCVINDIA,NSE:ZEEL,NSE:ZENTEC,NSE:ZENSARTECH,NSE:ZYDUSWELL,NSE:ECLERX"
+        => ''
+
+page_niftymicrocap250(sel) =>
+    switch sel
+        'Page 1 (1-40)' => "NSE:ASKAUTOLTD,NSE:AXISCADES,NSE:AARTIDRUGS,NSE:AARTIPHARM,NSE:AVL,NSE:ADVENZYMES,NSE:AEQUS,NSE:AETHER,NSE:AHLUCONT,NSE:AKUMS,NSE:APLLTD,NSE:ALIVUS,NSE:ALKYLAMINE,NSE:AGL,NSE:ALOKINDS,NSE:APOLLO,NSE:ACI,NSE:ARVINDFASN,NSE:ARVIND,NSE:ASHAPURMIN,NSE:ASHOKA,NSE:ASTRAMICRO,NSE:ATLANTAELE,NSE:AURIONPRO,NSE:AVALON,NSE:AVANTIFEED,NSE:CCAVENUE,NSE:AWFIS,NSE:AZAD,NSE:BAJAJELEC,NSE:BALAMINES,NSE:BALUFORGE,NSE:BANCOINDIA,NSE:BIRLACORPN,NSE:BBOX,NSE:BLACKBUCK,NSE:BLUESTONE,NSE:BORORENEW,NSE:CMSINFO,NSE:CORONA"
+        'Page 2 (41-80)' => "NSE:CSBBANK,NSE:CAMPUS,NSE:CRAMC,NSE:CAPILLARY,NSE:CELLO,NSE:CENTURYPLY,NSE:CERA,NSE:CRIZAC,NSE:CUPID,NSE:DCBBANK,NSE:DATAMATICS,NSE:DIACABS,NSE:DBL,NSE:AGARWALEYE,NSE:DYNAMATECH,NSE:EPL,NSE:EDELWEISS,NSE:EMIL,NSE:ELECTCAST,NSE:ELLEN,NSE:EMBDL,NSE:ENTERO,NSE:EIEL,NSE:EQUITASBNK,NSE:ETHOSLTD,NSE:EUREKAFORB,NSE:FEDFINA,NSE:FIEMIND,NSE:FINPIPE,NSE:UTLSOLAR,NSE:GHCL,NSE:GMMPFAUDLR,NSE:GMRP&UI,NSE:GRWRHITECH,NSE:GODREJAGRO,NSE:GOKEX,NSE:GOKULAGRO,NSE:GREAVESCOT,NSE:GRINDWELL,NSE:GAEL"
+        'Page 3 (81-120)' => "NSE:GNFC,NSE:GPPL,NSE:GSFC,NSE:HGINFRA,NSE:HAPPSTMNDS,NSE:HCG,NSE:HEMIPROP,NSE:HERITGFOOD,NSE:HCC,NSE:IFBIND,NSE:IIFLCAPS,NSE:INOXINDIA,NSE:INDIAGLYCO,NSE:INDIASHLTR,NSE:IMFA,NSE:INDIGOPNTS,NSE:ICIL,NSE:INOXGREEN,NSE:IONEXCHANG,NSE:JKLAKSHMI,NSE:JKPAPER,NSE:JAIBALAJI,NSE:JAMNAAUTO,NSE:JSFB,NSE:JAYNECOIND,NSE:JSLL,NSE:JLHL,NSE:JUSTDIAL,NSE:JYOTHYLAB,NSE:KNRCON,NSE:KPIGREEN,NSE:KRBL,NSE:KRN,NSE:KSB,NSE:KANSAINER,NSE:KTKBANK,NSE:KSCL,NSE:KIRLOSBROS,NSE:KIRLPNU,NSE:KITEX"
+        'Page 4 (121-160)' => "NSE:LXCHEM,NSE:IXIGO,NSE:LLOYDSENGG,NSE:LLOYDSENT,NSE:LUMAXTECH,NSE:MOIL,NSE:MSTCLTD,NSE:MTARTECH,NSE:MAHSCOOTER,NSE:MAHSEAMLES,NSE:MANORAMA,NSE:MARKSANS,NSE:MASTEK,NSE:MEDPLUS,NSE:METROPOLIS,NSE:MIDHANI,NSE:BECTORFOOD,NSE:NEOGEN,NSE:NESCO,NSE:NFL,NSE:NAZARA,NSE:NETWORK18,NSE:OPTIEMUS,NSE:ORIENTCEM,NSE:ORKLAINDIA,NSE:OSWALPUMPS,NSE:PNGJL,NSE:PCJEWELLER,NSE:PNCINFRA,NSE:PTC,NSE:PARAS,NSE:PARKHOSPS,NSE:PGIL,NSE:PICCADIL,NSE:POWERMECH,NSE:PRAJIND,NSE:PRICOLLTD,NSE:PRSMJOHNSN,NSE:PRIVISCL,NSE:PRUDENT"
+        'Page 5 (161-200)' => "NSE:PURVA,NSE:QPOWER,NSE:QUESS,NSE:RAIN,NSE:RALLIS,NSE:RCF,NSE:RATEGAIN,NSE:RATNAMANI,NSE:RTNINDIA,NSE:RTNPOWER,NSE:RAYMONDLSL,NSE:REDTAPE,NSE:REFEX,NSE:RELAXO,NSE:RELIGARE,NSE:RBA,NSE:ROUTE,NSE:RUBICON,NSE:SKFINDUS,NSE:SKFINDIA,NSE:SKYGOLD,NSE:SMLMAH,NSE:SHRIPISTON,NSE:SAATVIKGL,NSE:SAFARI,NSE:SAMHI,NSE:SANDUMA,NSE:SANOFICONR,NSE:SANSERA,NSE:SENCO,NSE:STYL,NSE:SHAILY,NSE:SHAKTIPUMP,NSE:SHARDACROP,NSE:SHAREINDIA,NSE:SFL,NSE:SHILPAMED,NSE:RENUKA,NSE:SKIPPER,NSE:SMARTWORKS"
+        'Page 6 (201-240)' => "NSE:SOUTHBANK,NSE:LOTUSDEV,NSE:STARCEMENT,NSE:SWSOLAR,NSE:STLTECH,NSE:STAR,NSE:STYRENIX,NSE:SUBROS,NSE:SUDARSCHEM,NSE:SUDEEPPHRM,NSE:SPARC,NSE:SUNTECK,NSE:SUPRIYA,NSE:SURYAROSNI,NSE:TARC,NSE:TDPOWERSYS,NSE:TSFINV,NSE:TVSSCS,NSE:TMB,NSE:TANLA,NSE:TEXRAIL,NSE:THANGAMAYL,NSE:ANUP,NSE:THOMASCOOK,NSE:THYROCARE,NSE:TI,NSE:TIMETECHNO,NSE:TIPSMUSIC,NSE:TRANSRAILL,NSE:TRIVENI,NSE:UJJIVANSFB,NSE:VGUARD,NSE:VMART,NSE:VIPIND,NSE:V2RETAIL,NSE:WABAG,NSE:VAIBHAVGBL,NSE:DBREALTY,NSE:VARROC,NSE:MANYAVAR"
+        'Page 7 (241-251)' => "NSE:VIKRAMSOLR,NSE:VIYASH,NSE:VOLTAMP,NSE:WAAREERTL,NSE:WAKEFIT,NSE:WEWORK,NSE:WEBELSOLAR,NSE:WELENT,NSE:WESTLIFE,NSE:YATHARTH,NSE:ZAGGLE"
+        => ''
+
+page_niftybank(sel) =>
+    switch sel
+        'Page 1 (1-14)' => "NSE:AUBANK,NSE:AXISBANK,NSE:BANKBARODA,NSE:CANBK,NSE:FEDERALBNK,NSE:HDFCBANK,NSE:ICICIBANK,NSE:IDFCFIRSTB,NSE:INDUSINDBK,NSE:KOTAKBANK,NSE:PNB,NSE:SBIN,NSE:UNIONBANK,NSE:YESBANK"
+        => ''
+
+page_niftyprivatebank(sel) =>
+    switch sel
+        'Page 1 (1-10)' => "NSE:AXISBANK,NSE:BANDHANBNK,NSE:FEDERALBNK,NSE:HDFCBANK,NSE:ICICIBANK,NSE:IDFCFIRSTB,NSE:INDUSINDBK,NSE:KOTAKBANK,NSE:RBLBANK,NSE:YESBANK"
+        => ''
+
+page_niftypsubank(sel) =>
+    switch sel
+        'Page 1 (1-12)' => "NSE:BANKBARODA,NSE:BANKINDIA,NSE:MAHABANK,NSE:CANBK,NSE:CENTRALBK,NSE:INDIANB,NSE:IOB,NSE:PSB,NSE:PNB,NSE:SBIN,NSE:UCOBANK,NSE:UNIONBANK"
+        => ''
+
+page_niftyauto(sel) =>
+    switch sel
+        'Page 1 (1-15)' => "NSE:ASHOKLEY,NSE:BAJAJ-AUTO,NSE:BHARATFORG,NSE:BOSCHLTD,NSE:EICHERMOT,NSE:EXIDEIND,NSE:HEROMOTOCO,NSE:M&M,NSE:MARUTI,NSE:MOTHERSON,NSE:SONACOMS,NSE:TVSMOTOR,NSE:TMPV,NSE:TIINDIA,NSE:UNOMINDA"
+        => ''
+
+page_niftyfinance(sel) =>
+    switch sel
+        'Page 1 (1-20)' => "NSE:AXISBANK,NSE:BSE,NSE:BAJFINANCE,NSE:BAJAJFINSV,NSE:CHOLAFIN,NSE:HDFCBANK,NSE:HDFCLIFE,NSE:ICICIBANK,NSE:ICICIGI,NSE:JIOFIN,NSE:KOTAKBANK,NSE:LICHSGFIN,NSE:MFSL,NSE:MUTHOOTFIN,NSE:PFC,NSE:RECLTD,NSE:SBICARD,NSE:SBILIFE,NSE:SHRIRAMFIN,NSE:SBIN"
+        => ''
+
+page_niftyfmcg(sel) =>
+    switch sel
+        'Page 1 (1-15)' => "NSE:BRITANNIA,NSE:COLPAL,NSE:DABUR,NSE:EMAMILTD,NSE:GODREJCP,NSE:HINDUNILVR,NSE:ITC,NSE:MARICO,NSE:NESTLEIND,NSE:PATANJALI,NSE:RADICO,NSE:TATACONSUM,NSE:UBL,NSE:UNITDSPR,NSE:VBL"
+        => ''
+
+page_niftymetal(sel) =>
+    switch sel
+        'Page 1 (1-15)' => "NSE:APLAPOLLO,NSE:ADANIENT,NSE:HINDALCO,NSE:HINDCOPPER,NSE:HINDZINC,NSE:JSWSTEEL,NSE:JSL,NSE:JINDALSTEL,NSE:LLOYDSME,NSE:NMDC,NSE:NATIONALUM,NSE:SAIL,NSE:TATASTEEL,NSE:VEDL,NSE:WELCORP"
+        => ''
+
+page_niftypharma(sel) =>
+    switch sel
+        'Page 1 (1-20)' => "NSE:ABBOTINDIA,NSE:AJANTPHARM,NSE:ALKEM,NSE:AUROPHARMA,NSE:BIOCON,NSE:CIPLA,NSE:DIVISLAB,NSE:DRREDDY,NSE:GLAND,NSE:GLENMARK,NSE:IPCALAB,NSE:LAURUSLABS,NSE:LUPIN,NSE:MANKIND,NSE:PPLPHARMA,NSE:SAILIFE,NSE:SUNPHARMA,NSE:TORNTPHARM,NSE:WOCKPHARMA,NSE:ZYDUSLIFE"
+        => ''
+
+page_niftyrealty(sel) =>
+    switch sel
+        'Page 1 (1-10)' => "NSE:ABREL,NSE:ANANTRAJ,NSE:BRIGADE,NSE:DLF,NSE:GODREJPROP,NSE:LODHA,NSE:OBEROIRLTY,NSE:PHOENIXLTD,NSE:PRESTIGE,NSE:SOBHA"
+        => ''
+
+effective_symbols = switch i_list_select
+    'Nifty 50' => page_nifty50(i_page_nifty50)
+    'Nifty Next 50' => page_niftynext50(i_page_niftynext50)
+    'Nifty 100' => page_nifty100(i_page_nifty100)
+    'Nifty 200' => page_nifty200(i_page_nifty200)
+    'Nifty 500' => page_nifty500(i_page_nifty500)
+    'Nifty LargeMidcap 250' => page_niftylargemidcap250(i_page_niftylargemidcap250)
+    'Nifty Midcap 50' => page_niftymidcap50(i_page_niftymidcap50)
+    'Nifty Midcap 100' => page_niftymidcap100(i_page_niftymidcap100)
+    'Nifty Midcap 150' => page_niftymidcap150(i_page_niftymidcap150)
+    'Nifty Smallcap 50' => page_niftysmallcap50(i_page_niftysmallcap50)
+    'Nifty Smallcap 100' => page_niftysmallcap100(i_page_niftysmallcap100)
+    'Nifty Smallcap 250' => page_niftysmallcap250(i_page_niftysmallcap250)
+    'Nifty Microcap 250' => page_niftymicrocap250(i_page_niftymicrocap250)
+    'Nifty Bank' => page_niftybank(i_page_niftybank)
+    'Nifty Private Bank' => page_niftyprivatebank(i_page_niftyprivatebank)
+    'Nifty PSU Bank' => page_niftypsubank(i_page_niftypsubank)
+    'Nifty Auto' => page_niftyauto(i_page_niftyauto)
+    'Nifty Finance' => page_niftyfinance(i_page_niftyfinance)
+    'Nifty FMCG' => page_niftyfmcg(i_page_niftyfmcg)
+    'Nifty Metal' => page_niftymetal(i_page_niftymetal)
+    'Nifty Pharma' => page_niftypharma(i_page_niftypharma)
+    'Nifty Realty' => page_niftyrealty(i_page_niftyrealty)
+    => i_symbols
+
+//_____________________________ Preset Index List Pages End
+
+//_____________________________ Get Symbols for Screener Start
+
+// Acknowledgement & Reference
+// Trader: 'allanster'
+// Indicator Title: 'How To Input CSV List Of Symbol Data Used For Screener'
+// Indicator Link: 'https://www.tradingview.com/script/KfqHqHUH-How-To-Input-CSV-List-Of-Symbol-Data-Used-For-Screener/'
+
+feed(back) =>                                             // extract tickerid and decrement list of ticker IDs
+    loop  = back                                          // declare string variable to hold content list
+    getT  = string(na)                                    // declare string variable to hold tickerid
+    if str.length(loop) == 0                              // if list is empty
+        getT := string(na)                                // assign na to tickerid variable
+        loop := string(na)                                // assign na to list of ticker Ids variable
+    else                                                  // else extract first tickerid
+        getP  = nz(str.pos(loop, ','), str.length(loop))  // get position of first comma or last character
+        getT := str.substring(loop, 0, getP)              // get tickerid in first position of list
+        loop := str.replace(loop, getT + ',', '')         // clear tickerid + delimiter character from list
+    [getT, loop]                                          // return tickerid in first position & truncated list
+
+[tid_01, out_01] = feed(effective_symbols), [tid_02, out_02] = feed(out_01), [tid_03, out_03] = feed(out_02), [tid_04, out_04] = feed(out_03),
+[tid_05, out_05] = feed(out_04), [tid_06, out_06] = feed(out_05), [tid_07, out_07] = feed(out_06), [tid_08, out_08] = feed(out_07),
+[tid_09, out_09] = feed(out_08), [tid_10, out_10] = feed(out_09), [tid_11, out_11] = feed(out_10), [tid_12, out_12] = feed(out_11),
+[tid_13, out_13] = feed(out_12), [tid_14, out_14] = feed(out_13), [tid_15, out_15] = feed(out_14), [tid_16, out_16] = feed(out_15),
+[tid_17, out_17] = feed(out_16), [tid_18, out_18] = feed(out_17), [tid_19, out_19] = feed(out_18), [tid_20, out_20] = feed(out_19),
+[tid_21, out_21] = feed(out_20), [tid_22, out_22] = feed(out_21), [tid_23, out_23] = feed(out_22), [tid_24, out_24] = feed(out_23),
+[tid_25, out_25] = feed(out_24), [tid_26, out_26] = feed(out_25), [tid_27, out_27] = feed(out_26), [tid_28, out_28] = feed(out_27),
+[tid_29, out_29] = feed(out_28), [tid_30, out_30] = feed(out_29), [tid_31, out_31] = feed(out_30), [tid_32, out_32] = feed(out_31),
+[tid_33, out_33] = feed(out_32), [tid_34, out_34] = feed(out_33), [tid_35, out_35] = feed(out_34), [tid_36, out_36] = feed(out_35),
+[tid_37, out_37] = feed(out_36), [tid_38, out_38] = feed(out_37), [tid_39, out_39] = feed(out_38), [tid_40, out_40] = feed(out_39)
+
+//_____________________________ Get Symbols for Screener End
+
+//_____________________________ Screener Start
+
+// Acknowledgement & Reference
+// Trader: 'MUQWISHI'
+// Indicator Title: 'Candlestick Patterns Screener [By MUQWISHI]'
+// Indicator Link: 'https://www.tradingview.com/script/xiWQuGOq-Candlestick-Patterns-Screener-By-MUQWISHI/'
+
+// Choose Screening Method
+short_cond = 
+ i_scr_choose == 'Prev 1 Swing Sweep' ? short_condition_1 :
+ i_scr_choose == 'Prev 2 Swing Sweep' ? short_condition_2 : short_condition_3
+
+long_cond =
+ i_scr_choose == 'Prev 1 Swing Sweep' ? long_condition_1 :
+ i_scr_choose == 'Prev 2 Swing Sweep' ? long_condition_2 : long_condition_3
+
+// Function for Screener Indicator Calculation
+indicator_calculation() =>
+    // Initialize variables
+    price = float(na)
+    _time = int(na)
+    _cum_pchg = float(na)
+    _cum_vol_pchg = float(na)
+    signal = int(na) 
+
+    if barstate.isconfirmed
+        // Check for Short Momentum Candle and conditions (Modify here to customize indicators)
+        if i_scr_show_long and long_cond
+            signal := 1
+
+        // Check for Long Momentum Candle and conditions (Modify here to customize indicators)
+        else if i_scr_show_short and short_cond
+            signal := -1
+
+        // Update price and time if signal is not null
+        if not na(signal)
+            price := math.round_to_mintick(close)
+            _time := time
+            _cum_pchg := cum_pchg
+            _cum_vol_pchg := cum_vol_pchg
+
+    [_time, price, _cum_pchg, _cum_vol_pchg, signal]
+
+// Function to format time
+format_time(x) =>
+    timezone = syminfo.timezone
+    timeframe.isintraday ? str.format_time(x, "HH:mm  dd-MM-yyyy", timezone) : str.format_time(x, "dd-MM-yyyy", timezone)
+
+// Function to extract symbol name
+symbol(s) => 
+    array.get(str.split(s, ":"), 1)
+
+// Matrix setup
+var matrix = matrix.new<string>(0, 6, na)
+
+// Function to add rows to the matrix
+mtxFun(symbol, _time, price, _cum_pchg, _cum_vol_pchg, signal) =>
+    matrix.add_row(matrix, 0, array.from(symbol, _time, price, _cum_pchg, _cum_vol_pchg, signal))
+
+// Screener function to collect data
+screener(s) =>
+    [_time, price, _cum_pchg, _cum_vol_pchg, signal] = request.security(s, timeframe.period, indicator_calculation())
+
+    // Check if the signal is not na and the time matches
+    if not na(signal) and _time == time
+        symbolName = symbol(s)
+        formattedTime = format_time(_time)
+        strPrice = str.tostring(price)
+        str_cum_pchg = str.tostring(_cum_pchg, '#.##')
+        str_cum_vol_pchg = str.tostring(_cum_vol_pchg, '#.##')
+        strSignal = str.tostring(signal)
+        
+        // Add data to the matrix
+        mtxFun(symbolName, formattedTime, strPrice, str_cum_pchg, str_cum_vol_pchg, strSignal)
+
+// Call Screener function for multiple symbols
+screener(tid_01), screener(tid_02), screener(tid_03), screener(tid_04), screener(tid_05), screener(tid_06), screener(tid_07),
+screener(tid_08), screener(tid_09), screener(tid_10), screener(tid_11), screener(tid_12), screener(tid_13), screener(tid_14),
+screener(tid_15), screener(tid_16), screener(tid_17), screener(tid_18), screener(tid_19), screener(tid_20), screener(tid_21),
+screener(tid_22), screener(tid_23), screener(tid_24), screener(tid_25), screener(tid_26), screener(tid_27), screener(tid_28),
+screener(tid_29), screener(tid_30), screener(tid_31), screener(tid_32), screener(tid_33), screener(tid_34), screener(tid_35),
+screener(tid_36), screener(tid_37), screener(tid_38), screener(tid_39), screener(tid_40)
+
+// Trim excess rows in the matrix
+if matrix.rows(matrix) > i_scr_tbl_disp_rows
+    while matrix.rows(matrix) > i_scr_tbl_disp_rows
+        matrix.remove_row(matrix, matrix.rows(matrix)-1)
+
+// Plot Table
+// Create table with specified properties
+var table scr_tbl = table.new(position=i_scr_tbl_position, columns=5, rows=102, border_width=1)
+
+// Function to populate cells in the table
+scr_cell_title(col, row, txt) => 
+    table.cell(scr_tbl, col, row, text = txt, text_color = i_neu_color, text_halign=text.align_center, bgcolor=i_neu_dark_color, text_size=i_scr_tbl_text_size)
+
+scr_cell(col, row, txt, _text_color, _bgcolor) => 
+    table.cell(scr_tbl, col, row, text = txt, text_color = _text_color, text_halign=text.align_left, bgcolor=_bgcolor, text_size=i_scr_tbl_text_size)
+
+// Check if it's the last bar
+if barstate.islast and i_scr_show_table
+    // Clear existing data in the table
+    table.clear(scr_tbl, 0, 0, 2, 101)
+
+    scr_cell_title(0, 0, i_scr_choose)
+    table.merge_cells(table_id=scr_tbl, start_column=0, start_row=0, end_column=4, end_row=0)
+    scr_cell_title(0, 1, "Symbol")
+    scr_cell_title(1, 1, "Time")
+    scr_cell_title(2, 1, "Price")
+    scr_cell_title(3, 1, "%Chg")
+    scr_cell_title(4, 1, "V %Chg")
+
+    j = 4
+    // Populate table with matrix data
+    if matrix.rows(matrix) > 0
+        for i = 0 to matrix.rows(matrix) - 1
+            // Determine color based on the signal
+
+            _textcolor = 
+             matrix.get(matrix, i, 5) ==  "1" ? i_pos_color : 
+             matrix.get(matrix, i, 5) == "-1" ? i_neg_color : i_neu_color
+
+            _bg_color = 
+             matrix.get(matrix, i, 5) ==  "1" ? i_pos_dark_color :
+             matrix.get(matrix, i, 5) == "-1" ? i_neg_dark_color : i_neu_color
+
+            // Populate cells in the table
+            scr_cell(0, j, matrix.get(matrix, i, 0), _textcolor, _bg_color)
+            scr_cell(1, j, matrix.get(matrix, i, 1), _textcolor, _bg_color)
+            scr_cell(2, j, matrix.get(matrix, i, 2), _textcolor, _bg_color)
+            scr_cell(3, j, matrix.get(matrix, i, 3), _textcolor, _bg_color)
+            scr_cell(4, j, matrix.get(matrix, i, 4), _textcolor, _bg_color)
+
+            j += 1
+
+//_____________________________ Screener End
+
+//_____________________________ Code End
+
+// Readme First:
+
+// ICT Liquidity Sweep Pattern Scanner
+
+// Logic
+//   - This generally identifies bullish or bearish liquidity sweeps of previous 1st, 2nd, or 3rd swings.
+
+// Notes
+//   - Use higher timeframes for stock selection and trade in lower timeframes.
+//   - The scanner may also generate incorrect signals.
+
