@@ -7,21 +7,22 @@ indicator("TradeKit", shorttitle="TradeKit", overlay=true, max_lines_count=500, 
 //==================================================
 groupFeatures = "Features"
 
-enableMA1       = input.bool(true,  "Enable MA 1", group=groupFeatures)
-enableMA2       = input.bool(true,  "Enable MA 2", group=groupFeatures)
-enableMA3       = input.bool(true,  "Enable MA 3", group=groupFeatures)
-enableMA4       = input.bool(true,  "Enable MA 4", group=groupFeatures)
-enableInsideBar = input.bool(true,  "Enable Inside Bar", group=groupFeatures)
-enableOutsideBar = input.bool(true,  "Enable Outside Bar", group=groupFeatures)
+enableMA1       = input.bool(false,  "Enable MA 1", group=groupFeatures)
+enableMA2       = input.bool(false,  "Enable MA 2", group=groupFeatures)
+enableMA3       = input.bool(false,  "Enable MA 3", group=groupFeatures)
+enableMA4       = input.bool(false,  "Enable MA 4", group=groupFeatures)
+enableInsideBar = input.bool(false,  "Enable Inside Bar", group=groupFeatures)
+enableOutsideBar = input.bool(false,  "Enable Outside Bar", group=groupFeatures)
 enableConfirmationBar = input.bool(false, "Enable C2C Bar", group=groupFeatures)
-enableBB = input.bool(true, "Enable Bollinger Bands", group=groupFeatures)
-enableDHL = input.bool(true, "Enable Daily High/Low", group=groupFeatures)
-enablePDHL      = input.bool(true,  "Enable Previous Day High/Low", group=groupFeatures)
+enableBB = input.bool(false, "Enable Bollinger Bands", group=groupFeatures)
+enableDHL = input.bool(false, "Enable Daily High/Low", group=groupFeatures)
+enablePDHL      = input.bool(false,  "Enable Previous Day High/Low", group=groupFeatures)
 enablePWHL      = input.bool(false, "Enable Previous Week High/Low", group=groupFeatures)
 enablePMHL      = input.bool(false, "Enable Previous Month High/Low", group=groupFeatures)
 enableVWAP      = input.bool(false, "Enable VWAP", group=groupFeatures)
 enableDashboard = input.bool(false, "Show Dashboard", group=groupFeatures)
-enableSessions = input.bool(true, "Enable Sessions", group=groupFeatures)
+enableSessions = input.bool(false, "Enable Sessions", group=groupFeatures)
+enableTimeRange = input.bool(true, "Enable Time Range Box", group=groupFeatures)
 
 
 //==================================================
@@ -591,6 +592,105 @@ var array<SessionInfo> sessionInfos = getSessionInfos()
 if enableSessions and not timeframe.isdwm
     for info in sessionInfos
         info.update()
+
+//==================================================
+// TIME RANGE BOX SETTINGS
+//==================================================
+groupTimeRange = "Time Range Box"
+
+trTimeframe     = input.timeframe("60", "Timeframe", group=groupTimeRange, tooltip="The higher timeframe to box. Only draws when this is actually higher than your chart's own timeframe -- e.g. pick 60 (1H) while viewing a 1min or 5min chart.")
+trKeepAll       = input.bool(false, "Keep All Periods (don't remove older boxes)", group=groupTimeRange, tooltip="When on, every period's box stays on the chart forever instead of being trimmed to \"Periods to Keep\". Still subject to TradingView's own 500-object drawing limit, shared across all of TradeKit's box/line features.")
+trPeriodsToKeep = input.int(5, "Periods to Keep", minval=1, group=groupTimeRange, active=not trKeepAll, tooltip="How many completed period boxes to keep on the chart. Older ones are removed as new periods form.")
+trColorA        = input.color(color.gray, "Period Color A", group=groupTimeRange)
+trColorB        = input.color(#FF69B4, "Period Color B", group=groupTimeRange)
+trShowLabel     = input.bool(true, "Show Label", group=groupTimeRange)
+trLabelPosition = input.string("Top Left", "Label Position", options=["Top Left", "Top Right", "Bottom Left", "Bottom Right"], group=groupTimeRange)
+trLabelSize     = input.int(10, "Label Font Size", minval=1, group=groupTimeRange)
+
+//==================================================
+// TIME RANGE BOX LOGIC
+//==================================================
+type TRPeriodBoxes
+    box upperWick
+    box body
+    box lowerWick
+    label lbl
+
+trOpen = float(na)
+trHigh = float(na)
+trLow = float(na)
+trClose = float(na)
+
+var int trPeriodIndex = 0
+var int trPeriodStart = na
+
+trNewPeriod = timeframe.change(trTimeframe)
+if trNewPeriod
+    trPeriodIndex := trPeriodIndex + 1
+    trPeriodStart := bar_index
+trIsSlotA = trPeriodIndex % 2 == 0
+trHigherThanChart = timeframe.in_seconds(trTimeframe) > timeframe.in_seconds(timeframe.period)
+
+trIsLabelTop  = trLabelPosition == "Top Left" or trLabelPosition == "Top Right"
+trIsLabelLeft = trLabelPosition == "Top Left" or trLabelPosition == "Bottom Left"
+// A style's anchor is that corner of the bubble; the bubble extends in the
+// opposite direction on both axes. We want it to extend away from the box
+// vertically (outside), but toward the box's own span horizontally (not
+// bleeding into the neighboring period) -- e.g. Top Left anchors at the
+// period's own left edge and should extend up-and-right into its own
+// period, which is style_label_lower_left (anchor = bubble's lower-left
+// corner, so the bubble itself sits up-and-right of it).
+trLabelStyle  = trLabelPosition == "Top Left" ? label.style_label_lower_left : trLabelPosition == "Top Right" ? label.style_label_lower_right : trLabelPosition == "Bottom Left" ? label.style_label_upper_left : label.style_label_upper_right
+
+var array<TRPeriodBoxes> trBoxGroups = array.new<TRPeriodBoxes>()
+var TRPeriodBoxes trCurrent = na
+
+if enableTimeRange
+    [trOpenSec, trHighSec, trLowSec, trCloseSec] = request.security(syminfo.tickerid, trTimeframe, [open, high, low, close])
+    trOpen := trOpenSec
+    trHigh := trHighSec
+    trLow := trLowSec
+    trClose := trCloseSec
+
+    if trHigherThanChart
+        slotColor = trIsSlotA ? trColorA : trColorB
+        bodyTop = math.max(trOpen, trClose)
+        bodyBottom = math.min(trOpen, trClose)
+        labelX = trIsLabelLeft ? trPeriodStart : bar_index
+        labelY = trIsLabelTop ? trHigh : trLow
+        labelText = "O" + str.tostring(trOpen, format.mintick) + " H" + str.tostring(trHigh, format.mintick) + " L" + str.tostring(trLow, format.mintick) + " C" + str.tostring(trClose, format.mintick)
+
+        if trNewPeriod
+            newLabel = trShowLabel ? label.new(labelX, labelY, labelText, style=trLabelStyle, textcolor=color.new(slotColor, 0), color=color(na), size=trLabelSize) : na
+            trCurrent := TRPeriodBoxes.new(upperWick = box.new(bar_index, trHigh, bar_index, bodyTop, bgcolor=color.new(slotColor, 85), border_color=na), body = box.new(bar_index, bodyTop, bar_index, bodyBottom, bgcolor=color.new(slotColor, 60), border_color=na), lowerWick = box.new(bar_index, bodyBottom, bar_index, trLow, bgcolor=color.new(slotColor, 85), border_color=na), lbl = newLabel)
+            array.push(trBoxGroups, trCurrent)
+            if not trKeepAll and array.size(trBoxGroups) > trPeriodsToKeep
+                oldGroup = array.shift(trBoxGroups)
+                box.delete(oldGroup.upperWick)
+                box.delete(oldGroup.body)
+                box.delete(oldGroup.lowerWick)
+                label.delete(oldGroup.lbl)
+        else
+            if not na(trCurrent)
+                box.set_top(trCurrent.upperWick, trHigh)
+                box.set_bottom(trCurrent.upperWick, bodyTop)
+                box.set_right(trCurrent.upperWick, bar_index)
+
+                box.set_top(trCurrent.body, bodyTop)
+                box.set_bottom(trCurrent.body, bodyBottom)
+                box.set_right(trCurrent.body, bar_index)
+
+                box.set_top(trCurrent.lowerWick, bodyBottom)
+                box.set_bottom(trCurrent.lowerWick, trLow)
+                box.set_right(trCurrent.lowerWick, bar_index)
+
+                if trShowLabel and not na(trCurrent.lbl)
+                    label.set_x(trCurrent.lbl, labelX)
+                    label.set_y(trCurrent.lbl, labelY)
+                    label.set_text(trCurrent.lbl, labelText)
+
+// Full-height background tint, alternating per period
+bgcolor(enableTimeRange and trHigherThanChart ? color.new(trIsSlotA ? trColorA : trColorB, 92) : na)
 
 //==================================================
 // DASHBOARD SETTINGS
